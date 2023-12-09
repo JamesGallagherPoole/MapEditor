@@ -14,8 +14,11 @@
  ********************************************************************************************/
 
 #include "raylib.h"
+#include "cJSON.h"
 
 #include <stdlib.h> // Required for: calloc(), free()
+#include <stdio.h>
+#include <string.h>
 
 #define MAX_FILEPATH_RECORDED 4096
 #define MAX_FILEPATH_SIZE 2048
@@ -59,7 +62,58 @@ int main(void)
                 fileDropped = true;
             }
 
+            // Load the file data
+            int dataSize = 0;
+            unsigned char *fileData = LoadFileData(filePaths[0], &dataSize);
+
+            // Convert data to a null-terminated string
+            char *jsonData = (char *)malloc(dataSize + 1);
+            memcpy(jsonData, fileData, dataSize);
+            jsonData[dataSize] = '\0';
+
+            // Unload the file data
+            UnloadFileData(fileData);
             UnloadDroppedFiles(droppedFiles); // Unload filepaths from memory
+
+            // Parse the JSON data
+            cJSON *json = cJSON_Parse(jsonData);
+            if (json == NULL)
+            {
+                const char *error_ptr = cJSON_GetErrorPtr();
+                if (error_ptr != NULL)
+                {
+                    fprintf(stderr, "Error before: %s\n", error_ptr);
+                }
+                free(jsonData);
+                return -1;
+            }
+
+            // Iterate through the structures and parse them
+            cJSON *structures = cJSON_GetObjectItem(json, "structures");
+            if (structures != NULL)
+            {
+                cJSON *structure = NULL;
+                cJSON_ArrayForEach(structure, structures)
+                {
+                    char *structureName = cJSON_GetObjectItem(structure, "name")->valuestring;
+                    char *spritePath = cJSON_GetObjectItem(structure, "sprite_path")->valuestring;
+                    cJSON *location = cJSON_GetObjectItem(structure, "location");
+                    if (location != NULL)
+                    {
+                        int x = cJSON_GetArrayItem(location, 0)->valueint;
+                        int y = cJSON_GetArrayItem(location, 1)->valueint;
+
+                        // Use x and y here, for example, to position sprites
+                        printf("Structure location: (%d, %d)\n", x, y);
+                    }
+                    // ... Access other properties as needed
+
+                    printf("Structure Name: %s, Sprite Path: %s\n", structureName, spritePath);
+                }
+            }
+
+            free(jsonData);
+            cJSON_Delete(json);
         }
         //----------------------------------------------------------------------------------
 

@@ -38,6 +38,9 @@ int main(void)
     bool fileDropped = false;
     char *filePaths[MAX_FILEPATH_RECORDED] = {0}; // We will register a maximum of filepaths
 
+    cJSON *configJson = NULL; // Global JSON object
+    cJSON *structures = NULL; // Global JSON array
+
     // Allocate space for the required file paths
     for (int i = 0; i < MAX_FILEPATH_RECORDED; i++)
     {
@@ -66,6 +69,13 @@ int main(void)
             int dataSize = 0;
             unsigned char *fileData = LoadFileData(filePaths[0], &dataSize);
 
+            // Free the old JSON data if it exists
+            if (configJson != NULL)
+            {
+                cJSON_Delete(configJson);
+                configJson = NULL;
+            }
+
             // Convert data to a null-terminated string
             char *jsonData = (char *)malloc(dataSize + 1);
             memcpy(jsonData, fileData, dataSize);
@@ -76,8 +86,8 @@ int main(void)
             UnloadDroppedFiles(droppedFiles); // Unload filepaths from memory
 
             // Parse the JSON data
-            cJSON *json = cJSON_Parse(jsonData);
-            if (json == NULL)
+            configJson = cJSON_Parse(jsonData);
+            if (configJson == NULL)
             {
                 const char *error_ptr = cJSON_GetErrorPtr();
                 if (error_ptr != NULL)
@@ -87,9 +97,14 @@ int main(void)
                 free(jsonData);
                 return -1;
             }
+            else
+            {
+                structures = cJSON_GetObjectItem(configJson, "structures");
+                free(jsonData);
+            }
 
             // Iterate through the structures and parse them
-            cJSON *structures = cJSON_GetObjectItem(json, "structures");
+            cJSON *structures = cJSON_GetObjectItem(configJson, "structures");
             if (structures != NULL)
             {
                 cJSON *structure = NULL;
@@ -111,9 +126,6 @@ int main(void)
                     printf("Structure Name: %s, Sprite Path: %s\n", structureName, spritePath);
                 }
             }
-
-            free(jsonData);
-            cJSON_Delete(json);
         }
         //----------------------------------------------------------------------------------
 
@@ -132,6 +144,9 @@ int main(void)
         {
             // A file has been dropped and we now need to parse the text
             DrawText(filePaths[0], 120, 100 + 80, 10, GRAY);
+
+            int structureCount = cJSON_GetArraySize(structures);
+            DrawText(TextFormat("Structure Count: %d", structureCount), 120, 100 + 100, 10, GRAY);
         }
 
         EndDrawing();
@@ -143,6 +158,12 @@ int main(void)
     for (int i = 0; i < MAX_FILEPATH_RECORDED; i++)
     {
         RL_FREE(filePaths[i]); // Free allocated memory for all filepaths
+    }
+
+    if (configJson != NULL)
+    {
+        cJSON_Delete(configJson);
+        configJson = NULL;
     }
 
     CloseWindow(); // Close window and OpenGL context

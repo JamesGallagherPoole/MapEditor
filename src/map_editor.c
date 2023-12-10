@@ -12,12 +12,20 @@
 #include <string.h>
 
 #define MAX_FILEPATH_SIZE 2048
+#define SQUARE_SIZE 31
 
 char *filePath = NULL;
 bool fileDropped = false;
 
 cJSON *configJson = NULL; // Global JSON object
 cJSON *structures = NULL; // Global JSON array
+
+const int screenWidth = 800;
+const int screenHeight = 450;
+
+Vector2 offset = {0};
+
+float displayScale = 0.1f;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -26,8 +34,6 @@ int main(void)
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
 
     InitWindow(screenWidth, screenHeight, "Wee Boats Map Editor");
 
@@ -36,7 +42,10 @@ int main(void)
     // Allocate space for the required file path
     filePath = (char *)RL_CALLOC(MAX_FILEPATH_SIZE, 1);
 
-    SetTargetFPS(1);
+    offset.x = screenWidth % SQUARE_SIZE;
+    offset.y = screenHeight % SQUARE_SIZE;
+
+    SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
     // Main game loop
@@ -149,6 +158,17 @@ void Draw()
 
     ClearBackground(RAYWHITE);
 
+    // Draw grid lines
+    for (int i = 0; i < screenWidth / SQUARE_SIZE + 1; i++)
+    {
+        DrawLineV((Vector2){SQUARE_SIZE * i + offset.x / 2, offset.y / 2}, (Vector2){SQUARE_SIZE * i + offset.x / 2, screenHeight - offset.y / 2}, LIGHTGRAY);
+    }
+
+    for (int i = 0; i < screenHeight / SQUARE_SIZE + 1; i++)
+    {
+        DrawLineV((Vector2){offset.x / 2, SQUARE_SIZE * i + offset.y / 2}, (Vector2){screenWidth - offset.x / 2, SQUARE_SIZE * i + offset.y / 2}, LIGHTGRAY);
+    }
+
     if (fileDropped == false)
     {
         DrawText("Wee Boats Map Editor", 100, 40, 40, DARKGRAY);
@@ -158,11 +178,19 @@ void Draw()
     {
         // A file has been dropped and we now need to parse the text
         DrawText(filePath, 120, 100 + 80, 10, GRAY);
-        cJSON *a_structure = cJSON_GetArrayItem(structures, 0);
 
-        // Add a copy of the first structure to the end of the array
-        cJSON *copy = cJSON_Duplicate(a_structure, 1);
-        cJSON_AddItemToArray(structures, copy);
+        cJSON *structure = NULL;
+        cJSON_ArrayForEach(structure, structures)
+        {
+            cJSON *location = cJSON_GetObjectItem(structure, "location");
+            if (location != NULL)
+            {
+                int x = cJSON_GetArrayItem(location, 0)->valueint;
+                int y = cJSON_GetArrayItem(location, 1)->valueint;
+
+                DrawCircle(x * displayScale, y * displayScale, 5, BLUE);
+            }
+        }
 
         int structureCount = cJSON_GetArraySize(structures);
         DrawText(TextFormat("Structure Count: %d", structureCount), 120, 100 + 100, 10, GRAY);

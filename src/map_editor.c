@@ -27,6 +27,9 @@ Vector2 offset = {0};
 
 float displayScale = 0.1f;
 
+int activeStructureIndex = -1;
+int selectedStructureIndex = -1;
+
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -69,6 +72,52 @@ int main(void)
 void Update()
 {
     CheckForDroppedFile();
+
+    Vector2 mouse = GetMousePosition();
+
+    printf("Mouse: (%f, %f)\n", mouse.x, mouse.y);
+
+    cJSON *structure = NULL;
+    int structureIndex = 0;
+    cJSON_ArrayForEach(structure, structures)
+    {
+        cJSON *location = cJSON_GetObjectItem(structure, "location");
+        if (location != NULL)
+        {
+            Vector2 structurePoint = {cJSON_GetArrayItem(location, 0)->valueint * displayScale, cJSON_GetArrayItem(location, 1)->valueint * displayScale};
+
+            /*
+            // Move active structure if we are dragging it
+            if (activeStructureIndex == structureIndex)
+            {
+                if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+                {
+                    printf("Dragging structure %d\n", structureIndex);
+                    structurePoint = mouse;
+                    location = cJSON_CreateFloatArray((float[]){structurePoint.x / displayScale, structurePoint.y / displayScale}, 2);
+                    structure = cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", location);
+                }
+            }
+            */
+
+            // Cancel active structure if we hover outside of it
+            if (activeStructureIndex == structureIndex)
+            {
+                if (!CheckCollisionPointCircle(mouse, structurePoint, 10.0f))
+                {
+                    activeStructureIndex = -1;
+                }
+            }
+
+            // Set active structure if we hover over it
+            if (CheckCollisionPointCircle(mouse, structurePoint, 10.0f))
+            {
+                printf("Hovering over structure %d\n", structureIndex);
+                activeStructureIndex = structureIndex;
+            }
+        }
+        structureIndex++;
+    }
 }
 
 void CheckForDroppedFile()
@@ -180,6 +229,7 @@ void Draw()
         DrawText(filePath, 120, 100 + 80, 10, GRAY);
 
         cJSON *structure = NULL;
+        int structureIndex = 0;
         cJSON_ArrayForEach(structure, structures)
         {
             cJSON *location = cJSON_GetObjectItem(structure, "location");
@@ -188,8 +238,16 @@ void Draw()
                 int x = cJSON_GetArrayItem(location, 0)->valueint;
                 int y = cJSON_GetArrayItem(location, 1)->valueint;
 
-                DrawCircle(x * displayScale, y * displayScale, 5, BLUE);
+                if (activeStructureIndex == structureIndex)
+                {
+                    DrawCircle(x * displayScale, y * displayScale, 10, RED);
+                }
+                else
+                {
+                    DrawCircle(x * displayScale, y * displayScale, 10, GREEN);
+                }
             }
+            structureIndex++;
         }
 
         int structureCount = cJSON_GetArraySize(structures);

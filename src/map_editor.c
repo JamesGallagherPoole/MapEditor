@@ -13,6 +13,7 @@
 
 #define MAX_FILEPATH_SIZE 2048
 #define SQUARE_SIZE 31
+#define SELECTED_STRUCTURE_FONT_SIZE 20
 
 char *filePath = NULL;
 bool fileDropped = false;
@@ -114,6 +115,14 @@ void Update()
             {
                 printf("Hovering over structure %d\n", structureIndex);
                 activeStructureIndex = structureIndex;
+            }
+
+            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+            {
+                if (activeStructureIndex != -1)
+                {
+                    selectedStructureIndex = activeStructureIndex;
+                }
             }
         }
         structureIndex++;
@@ -225,9 +234,6 @@ void Draw()
     }
     else
     {
-        // A file has been dropped and we now need to parse the text
-        DrawText(filePath, 120, 100 + 80, 10, GRAY);
-
         cJSON *structure = NULL;
         int structureIndex = 0;
         cJSON_ArrayForEach(structure, structures)
@@ -246,12 +252,19 @@ void Draw()
                 {
                     DrawCircle(x * displayScale, y * displayScale, 10, GREEN);
                 }
+
+                if (selectedStructureIndex == structureIndex)
+                {
+                    // Show info about the selected structure on bottom right of screen
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                }
             }
             structureIndex++;
         }
 
         int structureCount = cJSON_GetArraySize(structures);
-        DrawText(TextFormat("Structure Count: %d", structureCount), 120, 100 + 100, 10, GRAY);
     }
 
     EndDrawing();

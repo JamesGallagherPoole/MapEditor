@@ -87,7 +87,6 @@ void Update()
         {
             Vector2 structurePoint = {cJSON_GetArrayItem(location, 0)->valueint * displayScale, cJSON_GetArrayItem(location, 1)->valueint * displayScale};
 
-            /*
             // Move active structure if we are dragging it
             if (activeStructureIndex == structureIndex)
             {
@@ -95,11 +94,15 @@ void Update()
                 {
                     printf("Dragging structure %d\n", structureIndex);
                     structurePoint = mouse;
-                    location = cJSON_CreateFloatArray((float[]){structurePoint.x / displayScale, structurePoint.y / displayScale}, 2);
-                    structure = cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", location);
+                    location = cJSON_CreateIntArray((int[]){(int)structurePoint.x / displayScale, (int)structurePoint.y / displayScale}, 2);
+                    printf("Location: (%f, %f)\n", (int)structurePoint.x / displayScale, (int)structurePoint.y / displayScale);
+                    if (!cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", location))
+                    {
+                        printf("Error moving structure!");
+                        return 0;
+                    }
                 }
             }
-            */
 
             // Cancel active structure if we hover outside of it
             if (activeStructureIndex == structureIndex)
@@ -113,7 +116,8 @@ void Update()
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(mouse, structurePoint, 10.0f))
             {
-                printf("Hovering over structure %d\n", structureIndex);
+                printf("Hovering over structure %d\t Location: %f, %f\n", structureIndex, structurePoint.x, structurePoint.y);
+                printf("Converted Location: %f, %f\n", structurePoint.x / displayScale, structurePoint.y / displayScale);
                 activeStructureIndex = structureIndex;
             }
 
@@ -158,7 +162,7 @@ void CheckForDroppedFile()
         }
 
         // Convert data to a null-terminated string
-        char *jsonData = (char *)malloc(dataSize + 1);
+        char *jsonData = (char *)malloc(dataSize * 2); // Allocate double the size of the file data to allow for editing
         memcpy(jsonData, fileData, dataSize);
         jsonData[dataSize] = '\0';
 
@@ -244,6 +248,14 @@ void Draw()
                 int x = cJSON_GetArrayItem(location, 0)->valueint;
                 int y = cJSON_GetArrayItem(location, 1)->valueint;
 
+                if (selectedStructureIndex == structureIndex)
+                {
+                    // Show info about the selected structure on bottom right of screen
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                }
+
                 if (activeStructureIndex == structureIndex)
                 {
                     DrawCircle(x * displayScale, y * displayScale, 10, RED);
@@ -251,14 +263,6 @@ void Draw()
                 else
                 {
                     DrawCircle(x * displayScale, y * displayScale, 10, GREEN);
-                }
-
-                if (selectedStructureIndex == structureIndex)
-                {
-                    // Show info about the selected structure on bottom right of screen
-                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
                 }
             }
             structureIndex++;

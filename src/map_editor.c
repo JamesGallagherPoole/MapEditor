@@ -142,6 +142,7 @@ void Update()
 
 void ControlCamera()
 {
+    // Pan Camera
     if (IsKeyDown(KEY_LEFT))
     {
         cameraOffset.x += 10.0f;
@@ -157,6 +158,22 @@ void ControlCamera()
     else if (IsKeyDown(KEY_DOWN))
     {
         cameraOffset.y -= 10.0f;
+    }
+
+    // Zoom Camera
+    if (IsKeyDown(KEY_I))
+    {
+        if (displayScale < 1.0)
+        {
+            displayScale += 0.001f;
+        }
+    }
+    else if (IsKeyDown(KEY_O))
+    {
+        if (displayScale > 0.05)
+        {
+            displayScale -= 0.001f;
+        }
     }
 }
 

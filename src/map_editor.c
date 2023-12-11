@@ -31,6 +31,8 @@ float displayScale = 0.1f;
 int activeStructureIndex = -1;
 int selectedStructureIndex = -1;
 
+Vector2 cameraOffset;
+
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -76,8 +78,6 @@ void Update()
 
     Vector2 mouse = GetMousePosition();
 
-    printf("Mouse: (%f, %f)\n", mouse.x, mouse.y);
-
     cJSON *structure = NULL;
     int structureIndex = 0;
     cJSON_ArrayForEach(structure, structures)
@@ -86,10 +86,16 @@ void Update()
         if (location != NULL)
         {
             // Negative y to flip it to the expected location
-            Vector2 structurePoint = {cJSON_GetArrayItem(location, 0)->valueint * displayScale, -cJSON_GetArrayItem(location, 1)->valueint * displayScale};
+            Vector2 structureLocation = {cJSON_GetArrayItem(location, 0)->valueint, cJSON_GetArrayItem(location, 1)->valueint};
+            Vector2 structurePoint = {structureLocation.x * displayScale, -structureLocation.y * displayScale};
+
+            // Transform the mouse position to take into acount the moved camera
+            Vector2 transformedMouse = {mouse.x - cameraOffset.x, mouse.y - cameraOffset.y};
+
+            printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
 
             // Set active structure if we hover over it
-            if (CheckCollisionPointCircle(mouse, structurePoint, 10.0f))
+            if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
             {
                 printf("Hovering over structure %d\n", structureIndex);
                 activeStructureIndex = structureIndex;
@@ -105,14 +111,14 @@ void Update()
             }
 
             // Move selected structure if we are dragging it
-            if (selectedStructureIndex == structureIndex)
+            if (selectedStructureIndex == structureIndex && activeStructureIndex == structureIndex)
             {
                 if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
                 {
                     printf("Dragging structure %d\n", structureIndex);
-                    structurePoint = mouse;
-                    location = cJSON_CreateIntArray((int[]){(int)structurePoint.x / displayScale, -(int)structurePoint.y / displayScale}, 2); // Flipping y again to save it
-                    if (!cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", location))
+                    structurePoint = transformedMouse;
+                    cJSON *new_location = cJSON_CreateIntArray((int[]){(int)(structurePoint.x / displayScale), -(int)(structurePoint.y / displayScale)}, 2); // Flipping y again to save it
+                    if (!cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", new_location))
                     {
                         printf("Error moving structure!");
                         return 0;
@@ -123,13 +129,34 @@ void Update()
             // Cancel active structure if we hover outside of it
             if (activeStructureIndex == structureIndex)
             {
-                if (!CheckCollisionPointCircle(mouse, structurePoint, 10.0f))
+                if (!CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
                 {
                     activeStructureIndex = -1;
                 }
             }
         }
         structureIndex++;
+    }
+    ControlCamera();
+}
+
+void ControlCamera()
+{
+    if (IsKeyDown(KEY_LEFT))
+    {
+        cameraOffset.x += 10.0f;
+    }
+    else if (IsKeyDown(KEY_RIGHT))
+    {
+        cameraOffset.x -= 10.0f;
+    }
+    if (IsKeyDown(KEY_UP))
+    {
+        cameraOffset.y += 10.0f;
+    }
+    else if (IsKeyDown(KEY_DOWN))
+    {
+        cameraOffset.y -= 10.0f;
     }
 }
 
@@ -235,6 +262,7 @@ void Draw()
     {
         cJSON *structure = NULL;
         int structureIndex = 0;
+
         cJSON_ArrayForEach(structure, structures)
         {
             cJSON *location = cJSON_GetObjectItem(structure, "location");
@@ -253,11 +281,11 @@ void Draw()
 
                 if (activeStructureIndex == structureIndex)
                 {
-                    DrawCircle(x * displayScale, -y * displayScale, 10, RED);
+                    DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, RED);
                 }
                 else
                 {
-                    DrawCircle(x * displayScale, -y * displayScale, 10, GREEN);
+                    DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, GREEN);
                 }
             }
             structureIndex++;

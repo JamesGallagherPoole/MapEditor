@@ -33,6 +33,8 @@ int selectedStructureIndex = -1;
 
 Vector2 cameraOffset;
 
+// Settings
+
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -92,7 +94,20 @@ void Update()
             // Transform the mouse position to take into acount the moved camera
             Vector2 transformedMouse = {mouse.x - cameraOffset.x, mouse.y - cameraOffset.y};
 
-            printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
+            // printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
+
+            if (IsHoveringOverExportButton())
+            {
+                activeStructureIndex = -1;
+                if (IsExportButtonPressed() == 1)
+                {
+                    selectedStructureIndex = -1;
+                    printf("Exporting!\n");
+                    ExportCurrentStructuresToConfigFile();
+                    return;
+                }
+                return;
+            }
 
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
@@ -138,6 +153,42 @@ void Update()
         structureIndex++;
     }
     ControlCamera();
+}
+
+int IsHoveringOverExportButton()
+{
+    Vector2 mouse = GetMousePosition();
+
+    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 100, 10, 90, 45}))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int IsExportButtonPressed()
+{
+    Vector2 mouse = GetMousePosition();
+
+    if (IsHoveringOverExportButton())
+    {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void ExportCurrentStructuresToConfigFile()
+{
+    cJSON_ReplaceItemInObjectCaseSensitive(configJson, "structures", structures);
+
+    char *jsonString = cJSON_Print(configJson);
+
+    SaveFileText(filePath, jsonString);
 }
 
 void ControlCamera()
@@ -299,13 +350,32 @@ void Draw()
                 if (activeStructureIndex == structureIndex)
                 {
                     DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, RED);
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
                 }
                 else
                 {
                     DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, GREEN);
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
                 }
             }
             structureIndex++;
+        }
+
+        // Draw a button in the top right that says Export
+        if (IsExportButtonPressed())
+        {
+            DrawRectangle(screenWidth - 100, 10, 90, 45, DARKBLUE);
+            DrawText("Export", screenWidth - 90, 20, 20, WHITE);
+        }
+        else if (IsHoveringOverExportButton())
+        {
+            DrawRectangle(screenWidth - 100, 10, 90, 45, SKYBLUE);
+            DrawText("Export", screenWidth - 90, 20, 20, DARKBLUE);
+        }
+        else
+        {
+            DrawRectangle(screenWidth - 100, 10, 90, 45, BLUE);
+            DrawText("Export", screenWidth - 90, 20, 20, WHITE);
         }
 
         int structureCount = cJSON_GetArraySize(structures);

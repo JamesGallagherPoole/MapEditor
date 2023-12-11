@@ -21,8 +21,8 @@ bool fileDropped = false;
 cJSON *configJson = NULL; // Global JSON object
 cJSON *structures = NULL; // Global JSON array
 
-const int screenWidth = 800;
-const int screenHeight = 450;
+const int screenWidth = 1080;
+const int screenHeight = 720;
 
 Vector2 offset = {0};
 
@@ -34,6 +34,7 @@ int selectedStructureIndex = -1;
 Vector2 cameraOffset;
 
 // Settings
+bool _showNames = true;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -153,6 +154,12 @@ void Update()
         structureIndex++;
     }
     ControlCamera();
+    ToggleShowNames(_showNames);
+}
+
+int ToggleShowNames(int showNames)
+{
+    return showNames == 1 ? false : true;
 }
 
 int IsHoveringOverExportButton()
@@ -225,6 +232,12 @@ void ControlCamera()
         {
             displayScale -= 0.001f;
         }
+    }
+
+    // Toggle Show Names
+    if (IsKeyPressed(KEY_N))
+    {
+        _showNames = ToggleShowNames(_showNames);
     }
 }
 
@@ -339,23 +352,31 @@ void Draw()
                 int x = cJSON_GetArrayItem(location, 0)->valueint;
                 int y = cJSON_GetArrayItem(location, 1)->valueint;
 
-                if (selectedStructureIndex == structureIndex)
-                {
-                    // Show info about the selected structure on bottom right of screen
-                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                }
-
+                // Draw the structure
                 if (activeStructureIndex == structureIndex)
                 {
                     DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, RED);
-                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                    if (_showNames == true)
+                    {
+                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                    }
                 }
                 else
                 {
                     DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, GREEN);
-                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                    if (_showNames == true)
+                    {
+                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                    }
+                }
+
+                // Show info about the selected structure on bottom right of screen
+                if (selectedStructureIndex == structureIndex)
+                {
+                    DrawRectangle(screenWidth - 330, screenHeight - 200, 290, 190, LIGHTGRAY);
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
                 }
             }
             structureIndex++;
@@ -378,7 +399,11 @@ void Draw()
             DrawText("Export", screenWidth - 90, 20, 20, WHITE);
         }
 
-        int structureCount = cJSON_GetArraySize(structures);
+        // Draw the program commands in the bottom left
+        DrawText("Commands:", 10, screenHeight - 100, 20, DARKGRAY);
+        DrawText("Move Camera: Arrow Keys", 10, screenHeight - 80, 20, DARKGRAY);
+        DrawText("Zoom Camera: I/O Keys", 10, screenHeight - 60, 20, DARKGRAY);
+        DrawText("Toggle Show Names: N Key", 10, screenHeight - 40, 20, DARKGRAY);
     }
 
     EndDrawing();

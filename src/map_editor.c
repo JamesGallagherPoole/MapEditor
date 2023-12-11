@@ -110,6 +110,19 @@ void Update()
                 return;
             }
 
+            if (IsHoveringOverAddStructureButton())
+            {
+                activeStructureIndex = -1;
+                if (IsAddStructureButtonPressed() == 1)
+                {
+                    selectedStructureIndex = -1;
+                    printf("Adding structure!\n");
+                    AddStructure();
+                    return;
+                }
+                return;
+            }
+
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
             {
@@ -166,7 +179,7 @@ int IsHoveringOverExportButton()
 {
     Vector2 mouse = GetMousePosition();
 
-    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 100, 10, 90, 45}))
+    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 200, 10, 190, 45}))
     {
         return 1;
     }
@@ -189,6 +202,33 @@ int IsExportButtonPressed()
     return 0;
 }
 
+int IsHoveringOverAddStructureButton()
+{
+    Vector2 mouse = GetMousePosition();
+
+    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 200, 60, 190, 45}))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int IsAddStructureButtonPressed()
+{
+    Vector2 mouse = GetMousePosition();
+
+    if (IsHoveringOverAddStructureButton())
+    {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 void ExportCurrentStructuresToConfigFile()
 {
     cJSON_ReplaceItemInObjectCaseSensitive(configJson, "structures", structures);
@@ -196,6 +236,15 @@ void ExportCurrentStructuresToConfigFile()
     char *jsonString = cJSON_Print(configJson);
 
     SaveFileText(filePath, jsonString);
+}
+
+void AddStructure()
+{
+    cJSON *new_structure = cJSON_CreateObject();
+    cJSON_AddItemToObject(new_structure, "name", cJSON_CreateString("New Empty Structure!"));
+    cJSON_AddItemToObject(new_structure, "location", cJSON_CreateIntArray((int[]){0, 0}, 2));
+
+    cJSON_AddItemToArray(structures, new_structure);
 }
 
 void ControlCamera()
@@ -375,7 +424,6 @@ void Draw()
                 {
                     DrawRectangle(screenWidth - 330, screenHeight - 200, 290, 190, LIGHTGRAY);
                     DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(cJSON_GetObjectItem(structure, "sprite_path")->valuestring, screenWidth - 300, screenHeight - 130, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
                     DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
                 }
             }
@@ -385,18 +433,35 @@ void Draw()
         // Draw a button in the top right that says Export
         if (IsExportButtonPressed())
         {
-            DrawRectangle(screenWidth - 100, 10, 90, 45, DARKBLUE);
-            DrawText("Export", screenWidth - 90, 20, 20, WHITE);
+            DrawRectangle(screenWidth - 200, 10, 190, 45, DARKBLUE);
+            DrawText("Export", screenWidth - 190, 20, 20, WHITE);
         }
         else if (IsHoveringOverExportButton())
         {
-            DrawRectangle(screenWidth - 100, 10, 90, 45, SKYBLUE);
-            DrawText("Export", screenWidth - 90, 20, 20, DARKBLUE);
+            DrawRectangle(screenWidth - 200, 10, 190, 45, SKYBLUE);
+            DrawText("Export", screenWidth - 190, 20, 20, DARKBLUE);
         }
         else
         {
-            DrawRectangle(screenWidth - 100, 10, 90, 45, BLUE);
-            DrawText("Export", screenWidth - 90, 20, 20, WHITE);
+            DrawRectangle(screenWidth - 200, 10, 190, 45, BLUE);
+            DrawText("Export", screenWidth - 190, 20, 20, WHITE);
+        }
+
+        // Draw a button that allows the user to add a structure
+        if (IsAddStructureButtonPressed())
+        {
+            DrawRectangle(screenWidth - 200, 60, 190, 45, DARKBLUE);
+            DrawText("Add Structure", screenWidth - 190, 70, 20, WHITE);
+        }
+        else if (IsHoveringOverAddStructureButton())
+        {
+            DrawRectangle(screenWidth - 200, 60, 190, 45, SKYBLUE);
+            DrawText("Add Structure", screenWidth - 190, 70, 20, DARKBLUE);
+        }
+        else
+        {
+            DrawRectangle(screenWidth - 200, 60, 190, 45, BLUE);
+            DrawText("Add Structure", screenWidth - 190, 70, 20, WHITE);
         }
 
         // Draw the program commands in the bottom left

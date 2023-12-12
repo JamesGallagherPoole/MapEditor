@@ -15,23 +15,23 @@
 #define SQUARE_SIZE 31
 #define SELECTED_STRUCTURE_FONT_SIZE 20
 
-char *filePath = NULL;
-bool fileDropped = false;
+const int SCREEN_WIDTH = 1080;
+const int SCREEN_HEIGHT = 720;
 
-cJSON *configJson = NULL; // Global JSON object
-cJSON *structures = NULL; // Global JSON array
+char *_filePath = NULL;
+bool _fileDropped = false;
 
-const int screenWidth = 1080;
-const int screenHeight = 720;
+cJSON *_configJson = NULL; // Global JSON object
+cJSON *_structures = NULL; // Global JSON array
 
-Vector2 offset = {0};
+Vector2 _gridOffset = {0};
 
-float displayScale = 0.1f;
+float _displayScale = 0.1f;
 
-int activeStructureIndex = -1;
-int selectedStructureIndex = -1;
+int _activeStructureIndex = -1;
+int _selectedStructureIndex = -1;
 
-Vector2 cameraOffset;
+Vector2 _cameraOffset;
 
 // Settings
 bool _showNames = true;
@@ -44,15 +44,15 @@ int main(void)
     // Initialization
     //--------------------------------------------------------------------------------------
 
-    InitWindow(screenWidth, screenHeight, "Wee Boats Map Editor");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Wee Boats Map Editor");
 
-    fileDropped = false;
+    _fileDropped = false;
 
     // Allocate space for the required file path
-    filePath = (char *)RL_CALLOC(MAX_FILEPATH_SIZE, 1);
+    _filePath = (char *)RL_CALLOC(MAX_FILEPATH_SIZE, 1);
 
-    offset.x = screenWidth % SQUARE_SIZE;
-    offset.y = screenHeight % SQUARE_SIZE;
+    _gridOffset.x = SCREEN_WIDTH % SQUARE_SIZE;
+    _gridOffset.y = SCREEN_HEIGHT % SQUARE_SIZE;
 
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -83,26 +83,26 @@ void Update()
 
     cJSON *structure = NULL;
     int structureIndex = 0;
-    cJSON_ArrayForEach(structure, structures)
+    cJSON_ArrayForEach(structure, _structures)
     {
         cJSON *location = cJSON_GetObjectItem(structure, "location");
         if (location != NULL)
         {
             // Negative y to flip it to the expected location
             Vector2 structureLocation = {cJSON_GetArrayItem(location, 0)->valueint, cJSON_GetArrayItem(location, 1)->valueint};
-            Vector2 structurePoint = {structureLocation.x * displayScale, -structureLocation.y * displayScale};
+            Vector2 structurePoint = {structureLocation.x * _displayScale, -structureLocation.y * _displayScale};
 
             // Transform the mouse position to take into acount the moved camera
-            Vector2 transformedMouse = {mouse.x - cameraOffset.x, mouse.y - cameraOffset.y};
+            Vector2 transformedMouse = {mouse.x - _cameraOffset.x, mouse.y - _cameraOffset.y};
 
             // printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
 
             if (IsHoveringOverExportButton())
             {
-                activeStructureIndex = -1;
+                _activeStructureIndex = -1;
                 if (IsExportButtonPressed() == 1)
                 {
-                    selectedStructureIndex = -1;
+                    _selectedStructureIndex = -1;
                     printf("Exporting!\n");
                     ExportCurrentStructuresToConfigFile();
                     return;
@@ -112,10 +112,10 @@ void Update()
 
             if (IsHoveringOverAddStructureButton())
             {
-                activeStructureIndex = -1;
+                _activeStructureIndex = -1;
                 if (IsAddStructureButtonPressed() == 1)
                 {
-                    selectedStructureIndex = -1;
+                    _selectedStructureIndex = -1;
                     printf("Adding structure!\n");
                     AddStructure();
                     return;
@@ -127,26 +127,26 @@ void Update()
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
             {
                 printf("Hovering over structure %d\n", structureIndex);
-                activeStructureIndex = structureIndex;
+                _activeStructureIndex = structureIndex;
             }
 
             // Select structure
             if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
             {
-                if (activeStructureIndex != -1)
+                if (_activeStructureIndex != -1)
                 {
-                    selectedStructureIndex = activeStructureIndex;
+                    _selectedStructureIndex = _activeStructureIndex;
                 }
             }
 
             // Move selected structure if we are dragging it
-            if (selectedStructureIndex == structureIndex && activeStructureIndex == structureIndex)
+            if (_selectedStructureIndex == structureIndex && _activeStructureIndex == structureIndex)
             {
                 if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
                 {
                     printf("Dragging structure %d\n", structureIndex);
                     structurePoint = transformedMouse;
-                    cJSON *new_location = cJSON_CreateIntArray((int[]){(int)(structurePoint.x / displayScale), -(int)(structurePoint.y / displayScale)}, 2); // Flipping y again to save it
+                    cJSON *new_location = cJSON_CreateIntArray((int[]){(int)(structurePoint.x / _displayScale), -(int)(structurePoint.y / _displayScale)}, 2); // Flipping y again to save it
                     if (!cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", new_location))
                     {
                         printf("Error moving structure!");
@@ -156,11 +156,11 @@ void Update()
             }
 
             // Cancel active structure if we hover outside of it
-            if (activeStructureIndex == structureIndex)
+            if (_activeStructureIndex == structureIndex)
             {
                 if (!CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
                 {
-                    activeStructureIndex = -1;
+                    _activeStructureIndex = -1;
                 }
             }
         }
@@ -179,7 +179,7 @@ int IsHoveringOverExportButton()
 {
     Vector2 mouse = GetMousePosition();
 
-    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 200, 10, 190, 45}))
+    if (CheckCollisionPointRec(mouse, (Rectangle){SCREEN_WIDTH - 200, 10, 190, 45}))
     {
         return 1;
     }
@@ -206,7 +206,7 @@ int IsHoveringOverAddStructureButton()
 {
     Vector2 mouse = GetMousePosition();
 
-    if (CheckCollisionPointRec(mouse, (Rectangle){screenWidth - 200, 60, 190, 45}))
+    if (CheckCollisionPointRec(mouse, (Rectangle){SCREEN_WIDTH - 200, 60, 190, 45}))
     {
         return 1;
     }
@@ -231,11 +231,11 @@ int IsAddStructureButtonPressed()
 
 void ExportCurrentStructuresToConfigFile()
 {
-    cJSON_ReplaceItemInObjectCaseSensitive(configJson, "structures", structures);
+    cJSON_ReplaceItemInObjectCaseSensitive(_configJson, "_structures", _structures);
 
-    char *jsonString = cJSON_Print(configJson);
+    char *jsonString = cJSON_Print(_configJson);
 
-    SaveFileText(filePath, jsonString);
+    SaveFileText(_filePath, jsonString);
 }
 
 void AddStructure()
@@ -244,7 +244,7 @@ void AddStructure()
     cJSON_AddItemToObject(new_structure, "name", cJSON_CreateString("New Empty Structure!"));
     cJSON_AddItemToObject(new_structure, "location", cJSON_CreateIntArray((int[]){0, 0}, 2));
 
-    cJSON_AddItemToArray(structures, new_structure);
+    cJSON_AddItemToArray(_structures, new_structure);
 }
 
 void ControlCamera()
@@ -252,34 +252,34 @@ void ControlCamera()
     // Pan Camera
     if (IsKeyDown(KEY_LEFT))
     {
-        cameraOffset.x += 10.0f;
+        _cameraOffset.x += 10.0f;
     }
     else if (IsKeyDown(KEY_RIGHT))
     {
-        cameraOffset.x -= 10.0f;
+        _cameraOffset.x -= 10.0f;
     }
     if (IsKeyDown(KEY_UP))
     {
-        cameraOffset.y += 10.0f;
+        _cameraOffset.y += 10.0f;
     }
     else if (IsKeyDown(KEY_DOWN))
     {
-        cameraOffset.y -= 10.0f;
+        _cameraOffset.y -= 10.0f;
     }
 
     // Zoom Camera
     if (IsKeyDown(KEY_I))
     {
-        if (displayScale < 1.0)
+        if (_displayScale < 1.0)
         {
-            displayScale += 0.001f;
+            _displayScale += 0.001f;
         }
     }
     else if (IsKeyDown(KEY_O))
     {
-        if (displayScale > 0.05)
+        if (_displayScale > 0.05)
         {
-            displayScale -= 0.001f;
+            _displayScale -= 0.001f;
         }
     }
 
@@ -292,7 +292,7 @@ void ControlCamera()
 
 void CheckForDroppedFile()
 {
-    if (fileDropped == true)
+    if (_fileDropped == true)
     {
         return;
     }
@@ -303,19 +303,19 @@ void CheckForDroppedFile()
 
         for (int i = 0; i < (int)droppedFiles.count; i++)
         {
-            TextCopy(filePath, droppedFiles.paths[i]);
-            fileDropped = true;
+            TextCopy(_filePath, droppedFiles.paths[i]);
+            _fileDropped = true;
         }
 
         // Load the file data
         int dataSize = 0;
-        unsigned char *fileData = LoadFileData(filePath, &dataSize);
+        unsigned char *fileData = LoadFileData(_filePath, &dataSize);
 
         // Free the old JSON data if it exists
-        if (configJson != NULL)
+        if (_configJson != NULL)
         {
-            cJSON_Delete(configJson);
-            configJson = NULL;
+            cJSON_Delete(_configJson);
+            _configJson = NULL;
         }
 
         // Convert data to a null-terminated string
@@ -328,8 +328,8 @@ void CheckForDroppedFile()
         UnloadDroppedFiles(droppedFiles); // Unload filepaths from memory
 
         // Parse the JSON data
-        configJson = cJSON_Parse(jsonData);
-        if (configJson == NULL)
+        _configJson = cJSON_Parse(jsonData);
+        if (_configJson == NULL)
         {
             const char *error_ptr = cJSON_GetErrorPtr();
             if (error_ptr != NULL)
@@ -341,16 +341,16 @@ void CheckForDroppedFile()
         }
         else
         {
-            structures = cJSON_GetObjectItem(configJson, "structures");
+            _structures = cJSON_GetObjectItem(_configJson, "structures");
             RL_FREE(jsonData);
         }
 
         // Iterate through the structures and parse them
-        cJSON *structures = cJSON_GetObjectItem(configJson, "structures");
-        if (structures != NULL)
+        cJSON *_structures = cJSON_GetObjectItem(_configJson, "structures");
+        if (_structures != NULL)
         {
             cJSON *structure = NULL;
-            cJSON_ArrayForEach(structure, structures)
+            cJSON_ArrayForEach(structure, _structures)
             {
                 char *structureName = cJSON_GetObjectItem(structure, "name")->valuestring;
                 cJSON *location = cJSON_GetObjectItem(structure, "location");
@@ -373,17 +373,17 @@ void Draw()
     ClearBackground(RAYWHITE);
 
     // Draw grid lines
-    for (int i = 0; i < screenWidth / SQUARE_SIZE + 1; i++)
+    for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
     {
-        DrawLineV((Vector2){SQUARE_SIZE * i + offset.x / 2, offset.y / 2}, (Vector2){SQUARE_SIZE * i + offset.x / 2, screenHeight - offset.y / 2}, LIGHTGRAY);
+        DrawLineV((Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, _gridOffset.y / 2}, (Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, SCREEN_WIDTH - _gridOffset.y / 2}, LIGHTGRAY);
     }
 
-    for (int i = 0; i < screenHeight / SQUARE_SIZE + 1; i++)
+    for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
     {
-        DrawLineV((Vector2){offset.x / 2, SQUARE_SIZE * i + offset.y / 2}, (Vector2){screenWidth - offset.x / 2, SQUARE_SIZE * i + offset.y / 2}, LIGHTGRAY);
+        DrawLineV((Vector2){_gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, (Vector2){SCREEN_WIDTH - _gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, LIGHTGRAY);
     }
 
-    if (fileDropped == false)
+    if (_fileDropped == false)
     {
         DrawText("Wee Boats Map Editor", 100, 40, 40, DARKGRAY);
         DrawText("Drop the structure config JSON file onto the window...", 100, 100, 20, DARKGRAY);
@@ -393,7 +393,7 @@ void Draw()
         cJSON *structure = NULL;
         int structureIndex = 0;
 
-        cJSON_ArrayForEach(structure, structures)
+        cJSON_ArrayForEach(structure, _structures)
         {
             cJSON *location = cJSON_GetObjectItem(structure, "location");
             if (location != NULL)
@@ -402,29 +402,29 @@ void Draw()
                 int y = cJSON_GetArrayItem(location, 1)->valueint;
 
                 // Draw the structure
-                if (activeStructureIndex == structureIndex)
+                if (_activeStructureIndex == structureIndex)
                 {
-                    DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, RED);
+                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, RED);
                     if (_showNames == true)
                     {
-                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, DARKGRAY);
                     }
                 }
                 else
                 {
-                    DrawCircle((x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 10, GREEN);
+                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, GREEN);
                     if (_showNames == true)
                     {
-                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * displayScale) + cameraOffset.x, -(y * displayScale) + cameraOffset.y, 20, DARKGRAY);
+                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, DARKGRAY);
                     }
                 }
 
                 // Show info about the selected structure on bottom right of screen
-                if (selectedStructureIndex == structureIndex)
+                if (_selectedStructureIndex == structureIndex)
                 {
-                    DrawRectangle(screenWidth - 330, screenHeight - 200, 290, 190, LIGHTGRAY);
-                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, screenWidth - 300, screenHeight - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
-                    DrawText(TextFormat("Location: (%d, %d)", x, y), screenWidth - 300, screenHeight - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawRectangle(SCREEN_WIDTH - 330, SCREEN_HEIGHT - 200, 290, 190, LIGHTGRAY);
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, SCREEN_WIDTH - 300, SCREEN_HEIGHT - 150, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
+                    DrawText(TextFormat("Location: (%d, %d)", x, y), SCREEN_WIDTH - 300, SCREEN_HEIGHT - 110, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
                 }
             }
             structureIndex++;
@@ -433,42 +433,42 @@ void Draw()
         // Draw a button in the top right that says Export
         if (IsExportButtonPressed())
         {
-            DrawRectangle(screenWidth - 200, 10, 190, 45, DARKBLUE);
-            DrawText("Export", screenWidth - 190, 20, 20, WHITE);
+            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, DARKBLUE);
+            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, WHITE);
         }
         else if (IsHoveringOverExportButton())
         {
-            DrawRectangle(screenWidth - 200, 10, 190, 45, SKYBLUE);
-            DrawText("Export", screenWidth - 190, 20, 20, DARKBLUE);
+            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, SKYBLUE);
+            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, DARKBLUE);
         }
         else
         {
-            DrawRectangle(screenWidth - 200, 10, 190, 45, BLUE);
-            DrawText("Export", screenWidth - 190, 20, 20, WHITE);
+            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, BLUE);
+            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, WHITE);
         }
 
         // Draw a button that allows the user to add a structure
         if (IsAddStructureButtonPressed())
         {
-            DrawRectangle(screenWidth - 200, 60, 190, 45, DARKBLUE);
-            DrawText("Add Structure", screenWidth - 190, 70, 20, WHITE);
+            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, DARKBLUE);
+            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, WHITE);
         }
         else if (IsHoveringOverAddStructureButton())
         {
-            DrawRectangle(screenWidth - 200, 60, 190, 45, SKYBLUE);
-            DrawText("Add Structure", screenWidth - 190, 70, 20, DARKBLUE);
+            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, SKYBLUE);
+            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, DARKBLUE);
         }
         else
         {
-            DrawRectangle(screenWidth - 200, 60, 190, 45, BLUE);
-            DrawText("Add Structure", screenWidth - 190, 70, 20, WHITE);
+            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, BLUE);
+            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, WHITE);
         }
 
         // Draw the program commands in the bottom left
-        DrawText("Commands:", 10, screenHeight - 100, 20, DARKGRAY);
-        DrawText("Move Camera: Arrow Keys", 10, screenHeight - 80, 20, DARKGRAY);
-        DrawText("Zoom Camera: I/O Keys", 10, screenHeight - 60, 20, DARKGRAY);
-        DrawText("Toggle Show Names: N Key", 10, screenHeight - 40, 20, DARKGRAY);
+        DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);
+        DrawText("Move Camera: Arrow Keys", 10, SCREEN_HEIGHT - 80, 20, DARKGRAY);
+        DrawText("Zoom Camera: I/O Keys", 10, SCREEN_HEIGHT - 60, 20, DARKGRAY);
+        DrawText("Toggle Show Names: N Key", 10, SCREEN_HEIGHT - 40, 20, DARKGRAY);
     }
 
     EndDrawing();
@@ -476,11 +476,11 @@ void Draw()
 
 void Cleanup()
 {
-    RL_FREE(filePath); // Free allocated memory for all filepaths
+    RL_FREE(_filePath); // Free allocated memory for all filepaths
 
-    if (configJson != NULL)
+    if (_configJson != NULL)
     {
-        cJSON_Delete(configJson);
-        configJson = NULL;
+        cJSON_Delete(_configJson);
+        _configJson = NULL;
     }
 }

@@ -97,31 +97,8 @@ void Update()
 
             // printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
 
-            if (IsHoveringOverExportButton())
-            {
-                _activeStructureIndex = -1;
-                if (IsExportButtonPressed() == 1)
-                {
-                    _selectedStructureIndex = -1;
-                    printf("Exporting!\n");
-                    ExportCurrentStructuresToConfigFile();
-                    return;
-                }
-                return;
-            }
-
-            if (IsHoveringOverAddStructureButton())
-            {
-                _activeStructureIndex = -1;
-                if (IsAddStructureButtonPressed() == 1)
-                {
-                    _selectedStructureIndex = -1;
-                    printf("Adding structure!\n");
-                    AddStructure();
-                    return;
-                }
-                return;
-            }
+            HandleExportButton((Rectangle){SCREEN_WIDTH - 200, 10, 190, 45});
+            HandleAddStructureButton((Rectangle){SCREEN_WIDTH - 200, 60, 190, 45});
 
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
@@ -173,60 +150,6 @@ void Update()
 int ToggleShowNames(int showNames)
 {
     return showNames == 1 ? false : true;
-}
-
-int IsHoveringOverExportButton()
-{
-    Vector2 mouse = GetMousePosition();
-
-    if (CheckCollisionPointRec(mouse, (Rectangle){SCREEN_WIDTH - 200, 10, 190, 45}))
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-int IsExportButtonPressed()
-{
-    Vector2 mouse = GetMousePosition();
-
-    if (IsHoveringOverExportButton())
-    {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-int IsHoveringOverAddStructureButton()
-{
-    Vector2 mouse = GetMousePosition();
-
-    if (CheckCollisionPointRec(mouse, (Rectangle){SCREEN_WIDTH - 200, 60, 190, 45}))
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-int IsAddStructureButtonPressed()
-{
-    Vector2 mouse = GetMousePosition();
-
-    if (IsHoveringOverAddStructureButton())
-    {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        {
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 void ExportCurrentStructuresToConfigFile()
@@ -431,38 +354,12 @@ void Draw()
         }
 
         // Draw a button in the top right that says Export
-        if (IsExportButtonPressed())
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, DARKBLUE);
-            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, WHITE);
-        }
-        else if (IsHoveringOverExportButton())
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, SKYBLUE);
-            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, DARKBLUE);
-        }
-        else
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 10, 190, 45, BLUE);
-            DrawText("Export", SCREEN_WIDTH - 190, 20, 20, WHITE);
-        }
+        Rectangle exportButton = {SCREEN_WIDTH - 200, 10, 190, 45};
+        DrawInteractiveButton(exportButton, "Export");
 
         // Draw a button that allows the user to add a structure
-        if (IsAddStructureButtonPressed())
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, DARKBLUE);
-            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, WHITE);
-        }
-        else if (IsHoveringOverAddStructureButton())
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, SKYBLUE);
-            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, DARKBLUE);
-        }
-        else
-        {
-            DrawRectangle(SCREEN_WIDTH - 200, 60, 190, 45, BLUE);
-            DrawText("Add Structure", SCREEN_WIDTH - 190, 70, 20, WHITE);
-        }
+        Rectangle addStructureButton = {SCREEN_WIDTH - 200, 60, 190, 45};
+        DrawInteractiveButton(addStructureButton, "Add Structure");
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

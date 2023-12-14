@@ -26,10 +26,11 @@ bool _fileDropped = false;
 
 cJSON *_configJson = NULL; // Global JSON object
 cJSON *_structures = NULL; // Global JSON array
+cJSON *_regions = NULL;    // Global JSON array
 
 Vector2 _gridOffset = {0};
 
-float _displayScale = 0.1f;
+float _displayScale = 0.5f;
 
 int _activeStructureIndex = -1;
 int _selectedStructureIndex = -1;
@@ -39,6 +40,10 @@ Vector2 _cameraOffset;
 // Settings
 bool _showNames = true;
 bool _showAudio = true;
+bool _showRegionNames = true;
+
+// An array of colours for each region
+Color _regionColors[] = {PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME};
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -266,6 +271,7 @@ void CheckForDroppedFile()
         else
         {
             _structures = cJSON_GetObjectItem(_configJson, "structures");
+            _regions = cJSON_GetObjectItem(_configJson, "regions");
             RL_FREE(jsonData);
         }
 
@@ -325,14 +331,35 @@ void Draw()
                 int x = cJSON_GetArrayItem(location, 0)->valueint;
                 int y = cJSON_GetArrayItem(location, 1)->valueint;
 
+                // Region Colours and Names
+                Color structureColor = GREEN;
+                Color activeColor = RED;
+                char *regionName = (char *)RL_CALLOC(256, 1); // Allocate 256 bytes for the region name (should be enough)
+
+                int hasRegionId = cJSON_HasObjectItem(structure, "region_id");
+                if (hasRegionId == true)
+                {
+                    int regionId = cJSON_GetObjectItem(structure, "region_id")->valueint;
+
+                    if (regionId > sizeof(_regionColors) - 1)
+                    {
+                        printf("Region ID %d is out of bounds!\nWe need to add the region to the Map Editor!\n", regionId);
+                    }
+
+                    structureColor = _regionColors[regionId];
+
+                    cJSON *region = cJSON_GetArrayItem(_regions, regionId);
+                    regionName = cJSON_GetObjectItem(region, "name")->valuestring;
+                }
+
                 // Draw the structure
                 if (_activeStructureIndex == structureIndex)
                 {
-                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, RED);
+                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, activeColor);
                 }
                 else
                 {
-                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, GREEN);
+                    DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, structureColor);
                 }
 
                 if (_showNames == true)
@@ -351,6 +378,10 @@ void Draw()
                             DrawText(cJSON_GetObjectItem(audio, "file_path")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y - 20, 20, BLUE);
                         }
                     }
+                }
+                if (_showRegionNames == true)
+                {
+                    DrawText(regionName, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y + 20, 20, structureColor);
                 }
 
                 // Show info about the selected structure on bottom right of screen

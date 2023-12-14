@@ -159,7 +159,7 @@ void ToggleShowNames()
 
 void ExportCurrentStructuresToConfigFile()
 {
-    cJSON_ReplaceItemInObjectCaseSensitive(_configJson, "_structures", _structures);
+    cJSON_ReplaceItemInObjectCaseSensitive(_configJson, "structures", _structures);
 
     char *jsonString = cJSON_Print(_configJson);
 

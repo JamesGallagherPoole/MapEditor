@@ -144,12 +144,11 @@ void Update()
         structureIndex++;
     }
     ControlCamera();
-    ToggleShowNames(_showNames);
 }
 
-int ToggleShowNames(int showNames)
+void ToggleShowNames()
 {
-    return showNames == 1 ? false : true;
+    _showNames = !_showNames;
 }
 
 void ExportCurrentStructuresToConfigFile()
@@ -210,7 +209,7 @@ void ControlCamera()
     // Toggle Show Names
     if (IsKeyPressed(KEY_N))
     {
-        _showNames = ToggleShowNames(_showNames);
+        ToggleShowNames();
     }
 }
 
@@ -370,19 +369,13 @@ void Draw()
             AddStructure();
         }
 
+        // Visual Controls
         Rectangle visualControlsBox = {right_panel_anchor.x, right_panel_anchor.y + 150, 152, 176};
         Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 176, 24, 24};
         Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 244, 24, 24};
 
-        if (GuiCheckBox(showNamesToggle, "Show Names", &_showNames))
-        {
-            ToggleShowNames(_showNames);
-        }
-
-        if (GuiCheckBox(showAudioNamesToggle, "Show Audio Names", false))
-        {
-            // ToDo: Add functionality
-        }
+        GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
+        GuiCheckBox(showAudioNamesToggle, "Show Audio Names", false);
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

@@ -1,0 +1,17 @@
+#
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+#
+# Number of controls:     6
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 888 296 -1 -1
+a 001 structure_options_anchor 0 0 1
+c 000 5 ExportButton 16 16 120 24 0 Export
+c 001 5 AddStructuresButton 16 56 120 24 0 Add Structure
+c 002 1 StructureOptionsBox 0 0 152 104 0 Structure Options
+c 003 1 visual_controls_box 0 160 152 176 0 Visual Controls
+c 004 7 show_names_toggle 24 176 24 24 0 Show Names
+c 005 7 show_audio_names_toggle 24 224 24 24 0 Show Audio Names

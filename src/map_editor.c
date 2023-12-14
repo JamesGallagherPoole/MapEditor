@@ -38,6 +38,7 @@ Vector2 _cameraOffset;
 
 // Settings
 bool _showNames = true;
+bool _showAudio = true;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -328,17 +329,27 @@ void Draw()
                 if (_activeStructureIndex == structureIndex)
                 {
                     DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, RED);
-                    if (_showNames == true)
-                    {
-                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, DARKGRAY);
-                    }
                 }
                 else
                 {
                     DrawCircle((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 10, GREEN);
-                    if (_showNames == true)
+                }
+
+                if (_showNames == true)
+                {
+                    DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, DARKGRAY);
+                }
+                if (_showAudio == true)
+                {
+                    cJSON *audio_sources = cJSON_GetObjectItem(structure, "audio_sources");
+                    if (audio_sources != NULL)
                     {
-                        DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, DARKGRAY);
+                        cJSON *audio = NULL;
+                        cJSON_ArrayForEach(audio, audio_sources)
+                        {
+                            DrawCircleLines((x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y, 20, BLUE);
+                            DrawText(cJSON_GetObjectItem(audio, "file_path")->valuestring, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y - 20, 20, BLUE);
+                        }
                     }
                 }
 
@@ -370,12 +381,12 @@ void Draw()
         }
 
         // Visual Controls
-        Rectangle visualControlsBox = {right_panel_anchor.x, right_panel_anchor.y + 150, 152, 176};
+        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 150, 152, 176};
         Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 176, 24, 24};
         Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 244, 24, 24};
 
         GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
-        GuiCheckBox(showAudioNamesToggle, "Show Audio Names", false);
+        GuiCheckBox(showAudioNamesToggle, "Show Audio Names", &_showAudio);
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

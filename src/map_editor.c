@@ -396,7 +396,7 @@ void Draw()
         }
 
         // Structure Options
-        Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 10};
+        Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 20};
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
         Rectangle structureOptionsBox = {right_panel_anchor.x, right_panel_anchor.y, 152, 104};
@@ -414,10 +414,13 @@ void Draw()
         // Visual Controls
         Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 150, 152, 176};
         Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 176, 24, 24};
-        Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 244, 24, 24};
+        Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 224, 24, 24};
+        Rectangle showRegionNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 272, 24, 24};
 
+        GuiGroupBox(visualControlsBox, "Visual Controls");
         GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
         GuiCheckBox(showAudioNamesToggle, "Show Audio Names", &_showAudio);
+        GuiCheckBox(showRegionNamesToggle, "Show Region Text", &_showRegionNames);
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

@@ -7,6 +7,9 @@
 #include "raylib.h"
 #include "cJSON.h"
 
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+
 #include <stdlib.h> // Required for: calloc(), free()
 #include <stdio.h>
 #include <string.h>
@@ -97,9 +100,6 @@ void Update()
 
             // printf("Mouse: (%f, %f)\t Transformed Mouse: (%f, %f)\n", mouse.x, mouse.y, transformedMouse.x, transformedMouse.y);
 
-            HandleExportButton((Rectangle){SCREEN_WIDTH - 200, 10, 190, 45});
-            HandleAddStructureButton((Rectangle){SCREEN_WIDTH - 200, 60, 190, 45});
-
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
             {
@@ -163,10 +163,11 @@ void ExportCurrentStructuresToConfigFile()
 
 void AddStructure()
 {
+    printf("Adding new structure!\n");
+
     cJSON *new_structure = cJSON_CreateObject();
     cJSON_AddItemToObject(new_structure, "name", cJSON_CreateString("New Empty Structure!"));
     cJSON_AddItemToObject(new_structure, "location", cJSON_CreateIntArray((int[]){0, 0}, 2));
-
     cJSON_AddItemToArray(_structures, new_structure);
 }
 
@@ -353,13 +354,35 @@ void Draw()
             structureIndex++;
         }
 
-        // Draw a button in the top right that says Export
-        Rectangle exportButton = {SCREEN_WIDTH - 200, 10, 190, 45};
-        DrawInteractiveButton(exportButton, "Export");
+        // Structure Options
+        Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 10};
+        Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
+        Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
+        Rectangle structureOptionsBox = {right_panel_anchor.x, right_panel_anchor.y, 152, 104};
 
-        // Draw a button that allows the user to add a structure
-        Rectangle addStructureButton = {SCREEN_WIDTH - 200, 60, 190, 45};
-        DrawInteractiveButton(addStructureButton, "Add Structure");
+        GuiGroupBox(structureOptionsBox, "Structure Options");
+        if (GuiButton(exportButton, "Export"))
+        {
+            ExportCurrentStructuresToConfigFile();
+        }
+        if (GuiButton(addStructureButton, "Add Structure"))
+        {
+            AddStructure();
+        }
+
+        Rectangle visualControlsBox = {right_panel_anchor.x, right_panel_anchor.y + 150, 152, 176};
+        Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 176, 24, 24};
+        Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 244, 24, 24};
+
+        if (GuiCheckBox(showNamesToggle, "Show Names", &_showNames))
+        {
+            ToggleShowNames(_showNames);
+        }
+
+        if (GuiCheckBox(showAudioNamesToggle, "Show Audio Names", false))
+        {
+            // ToDo: Add functionality
+        }
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

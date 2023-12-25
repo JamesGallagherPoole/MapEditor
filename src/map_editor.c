@@ -302,19 +302,18 @@ void Draw()
 
     ClearBackground(RAYWHITE);
 
-    // Draw grid lines
-    for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
-    {
-        DrawLineV((Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, _gridOffset.y / 2}, (Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, SCREEN_WIDTH - _gridOffset.y / 2}, LIGHTGRAY);
-    }
-
-    for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
-    {
-        DrawLineV((Vector2){_gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, (Vector2){SCREEN_WIDTH - _gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, LIGHTGRAY);
-    }
-
     if (_fileDropped == false)
     {
+        // Draw grid lines
+        for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
+        {
+            DrawLineV((Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, _gridOffset.y / 2}, (Vector2){SQUARE_SIZE * i + _gridOffset.x / 2, SCREEN_WIDTH - _gridOffset.y / 2}, LIGHTGRAY);
+        }
+
+        for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
+        {
+            DrawLineV((Vector2){_gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, (Vector2){SCREEN_WIDTH - _gridOffset.x / 2, SQUARE_SIZE * i + _gridOffset.y / 2}, LIGHTGRAY);
+        }
         DrawText("Wee Boats Map Editor", 100, 40, 40, DARKGRAY);
         DrawText("Drop the structure config JSON file onto the window...", 100, 100, 20, DARKGRAY);
     }
@@ -322,6 +321,10 @@ void Draw()
     {
         cJSON *structure = NULL;
         int structureIndex = 0;
+
+        // Draw grid lines
+        DrawLineEx((Vector2){_cameraOffset.x, 0}, (Vector2){_cameraOffset.x, SCREEN_HEIGHT}, 2, RED);
+        DrawLineEx((Vector2){0, _cameraOffset.y}, (Vector2){SCREEN_WIDTH, _cameraOffset.y}, 2, RED);
 
         cJSON_ArrayForEach(structure, _structures)
         {

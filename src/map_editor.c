@@ -27,6 +27,7 @@ bool _fileDropped = false;
 cJSON *_configJson = NULL; // Global JSON object
 cJSON *_structures = NULL; // Global JSON array
 cJSON *_regions = NULL;    // Global JSON array
+cJSON *_snow_regions = NULL;
 
 Vector2 _gridOffset = {0};
 
@@ -41,6 +42,7 @@ Vector2 _cameraOffset;
 bool _showNames = true;
 bool _showAudio = true;
 bool _showRegionNames = true;
+bool _showSnowRegions = true;
 
 // An array of colours for each region
 Color _regionColors[] = {PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME};
@@ -109,7 +111,6 @@ void Update()
             // Set active structure if we hover over it
             if (CheckCollisionPointCircle(transformedMouse, structurePoint, 10.0f))
             {
-                printf("Hovering over structure %d\n", structureIndex);
                 _activeStructureIndex = structureIndex;
             }
 
@@ -149,6 +150,90 @@ void Update()
         }
         structureIndex++;
     }
+
+    // Move snow region points
+    if (_showSnowRegions == true)
+    {
+        cJSON *snow_region = NULL;
+        cJSON_ArrayForEach(snow_region, _snow_regions)
+        {
+            cJSON *bounds = cJSON_GetObjectItem(snow_region, "bounds");
+            if (bounds != NULL)
+            {
+                cJSON *min = cJSON_GetObjectItem(bounds, "min");
+                cJSON *max = cJSON_GetObjectItem(bounds, "max");
+
+                int min_x = cJSON_GetArrayItem(min, 0)->valueint;
+                int min_y = cJSON_GetArrayItem(min, 1)->valueint;
+
+                int max_x = cJSON_GetArrayItem(max, 0)->valueint;
+                int max_y = cJSON_GetArrayItem(max, 1)->valueint;
+
+                Vector2 topLeft = {min_x * _displayScale, -(max_y * _displayScale)};
+                Vector2 topRight = {max_x * _displayScale, -(max_y * _displayScale)};
+                Vector2 bottomLeft = {min_x * _displayScale, -(min_y * _displayScale)};
+                Vector2 bottomRight = {max_x * _displayScale, -(min_y * _displayScale)};
+
+                // Transform the mouse position to take into acount the moved camera
+                Vector2 transformedMouse = {mouse.x - _cameraOffset.x, mouse.y - _cameraOffset.y};
+
+                // Set active structure if we hover over it
+                if (CheckCollisionPointCircle(transformedMouse, topLeft, 15.0f))
+                {
+                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+                    {
+                        topLeft = transformedMouse;
+                        min_x = (int)(topLeft.x / _displayScale);
+                        max_y = -(int)(topLeft.y / _displayScale);
+                    }
+                }
+
+                if (CheckCollisionPointCircle(transformedMouse, topRight, 15.0f))
+                {
+                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+                    {
+                        topRight = transformedMouse;
+                        max_x = (int)(topRight.x / _displayScale);
+                        max_y = -(int)(topRight.y / _displayScale);
+                    }
+                }
+
+                if (CheckCollisionPointCircle(transformedMouse, bottomLeft, 15.0f))
+                {
+                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+                    {
+                        bottomLeft = transformedMouse;
+                        min_x = (int)(bottomLeft.x / _displayScale);
+                        min_y = -(int)(bottomLeft.y / _displayScale);
+                    }
+                }
+
+                if (CheckCollisionPointCircle(transformedMouse, bottomRight, 15.0f))
+                {
+                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+                    {
+                        bottomRight = transformedMouse;
+                        max_x = (int)(bottomRight.x / _displayScale);
+                        min_y = -(int)(bottomRight.y / _displayScale);
+                    }
+                }
+
+                cJSON *new_min = cJSON_CreateIntArray((int[]){min_x, min_y}, 2);
+                cJSON *new_max = cJSON_CreateIntArray((int[]){max_x, max_y}, 2);
+                if (!cJSON_ReplaceItemInObjectCaseSensitive(bounds, "min", new_min))
+                {
+                    printf("Error moving snow region point!");
+                    return 0;
+                }
+                if (!cJSON_ReplaceItemInObjectCaseSensitive(bounds, "max", new_max))
+                {
+                    printf("Error moving snow region point!");
+                    return 0;
+                }
+            }
+        }
+    }
+
     ControlCamera();
 }
 
@@ -166,6 +251,15 @@ void ExportCurrentStructuresToConfigFile()
     SaveFileText(_filePath, jsonString);
 }
 
+void ExportCurrentSnowRegionsToConfigFile()
+{
+    cJSON_ReplaceItemInObjectCaseSensitive(_configJson, "snow_regions", _snow_regions);
+
+    char *jsonString = cJSON_Print(_configJson);
+
+    SaveFileText(_filePath, jsonString);
+}
+
 void AddStructure()
 {
     printf("Adding new structure!\n");
@@ -174,6 +268,23 @@ void AddStructure()
     cJSON_AddItemToObject(new_structure, "name", cJSON_CreateString("New Empty Structure!"));
     cJSON_AddItemToObject(new_structure, "location", cJSON_CreateIntArray((int[]){0, 0}, 2));
     cJSON_AddItemToArray(_structures, new_structure);
+}
+
+void AddSnowRegion()
+{
+    printf("Adding new snow region!\n");
+    cJSON *new_snow_region = cJSON_CreateObject();
+
+    // Create a new min and max array at the center of the screen
+    cJSON *new_min = cJSON_CreateIntArray((int[]){-100, -100}, 2);
+    cJSON *new_max = cJSON_CreateIntArray((int[]){100, 100}, 2);
+
+    cJSON *new_bounds = cJSON_CreateObject();
+    cJSON_AddItemToObject(new_bounds, "min", new_min);
+    cJSON_AddItemToObject(new_bounds, "max", new_max);
+
+    cJSON_AddItemToObject(new_snow_region, "bounds", new_bounds);
+    cJSON_AddItemToArray(_snow_regions, new_snow_region);
 }
 
 void ControlCamera()
@@ -272,6 +383,7 @@ void CheckForDroppedFile()
         {
             _structures = cJSON_GetObjectItem(_configJson, "structures");
             _regions = cJSON_GetObjectItem(_configJson, "regions");
+            _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
             RL_FREE(jsonData);
         }
 
@@ -398,8 +510,39 @@ void Draw()
             structureIndex++;
         }
 
+        if (_showSnowRegions == true)
+        {
+            // Draw the snow regions
+            cJSON *snow_region = NULL;
+            cJSON_ArrayForEach(snow_region, _snow_regions)
+            {
+                cJSON *bounds = cJSON_GetObjectItem(snow_region, "bounds");
+                if (bounds != NULL)
+                {
+                    cJSON *min = cJSON_GetObjectItem(bounds, "min");
+                    cJSON *max = cJSON_GetObjectItem(bounds, "max");
+
+                    int min_x = cJSON_GetArrayItem(min, 0)->valueint;
+                    int min_y = cJSON_GetArrayItem(min, 1)->valueint;
+
+                    int max_x = cJSON_GetArrayItem(max, 0)->valueint;
+                    int max_y = cJSON_GetArrayItem(max, 1)->valueint;
+
+                    // Snow Region Label
+                    DrawText("Snow Region", (min_x + 20) * _displayScale + _cameraOffset.x, -((max_y - 15) * _displayScale) + _cameraOffset.y, 20, BLUE);
+                    DrawRectangleLinesEx((Rectangle){min_x * _displayScale + _cameraOffset.x, -(max_y * _displayScale) + _cameraOffset.y, (max_x - min_x) * _displayScale, (max_y - min_y) * _displayScale}, 2, BLUE);
+                    DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
+                    DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
+                    DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
+                    DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
+                }
+            }
+        }
+
         // Structure Options
         Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 20};
+        Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 400};
+
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
         Rectangle structureOptionsBox = {right_panel_anchor.x, right_panel_anchor.y, 152, 104};
@@ -408,6 +551,7 @@ void Draw()
         if (GuiButton(exportButton, "Export"))
         {
             ExportCurrentStructuresToConfigFile();
+            ExportCurrentSnowRegionsToConfigFile();
         }
         if (GuiButton(addStructureButton, "Add Structure"))
         {
@@ -415,15 +559,26 @@ void Draw()
         }
 
         // Visual Controls
-        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 150, 152, 176};
-        Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 176, 24, 24};
-        Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 224, 24, 24};
-        Rectangle showRegionNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 272, 24, 24};
+        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 158, 152, 208};
+        Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 184, 24, 24};
+        Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 232, 24, 24};
+        Rectangle showRegionNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 280, 24, 24};
+        Rectangle showSnowRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 328, 24, 24};
 
         GuiGroupBox(visualControlsBox, "Visual Controls");
         GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
         GuiCheckBox(showAudioNamesToggle, "Show Audio Names", &_showAudio);
         GuiCheckBox(showRegionNamesToggle, "Show Region Text", &_showRegionNames);
+        GuiCheckBox(showSnowRegionToggle, "Show Snow Regions", &_showSnowRegions);
+
+        if (_showSnowRegions)
+        {
+            GuiGroupBox((Rectangle){snow_region_control_anchor.x + 0, snow_region_control_anchor.y + 0, 152, 72}, "Snow Region Controls");
+            if (GuiButton((Rectangle){snow_region_control_anchor.x + 16, snow_region_control_anchor.y + 24, 120, 24}, "Add Snow Region"))
+            {
+                AddSnowRegion();
+            }
+        }
 
         // Draw the program commands in the bottom left
         DrawText("Commands:", 10, SCREEN_HEIGHT - 100, 20, DARKGRAY);

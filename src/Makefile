@@ -403,6 +403,7 @@ PROJECT_SOURCE_FILES ?= \
     map_editor.c \
     cJSON.c \
     ui.c \
+    snow_region.c \
 
 # Define all object files from source files
 OBJS = $(patsubst %.c, %.o, $(PROJECT_SOURCE_FILES))

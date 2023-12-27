@@ -29,14 +29,11 @@ cJSON *_structures = NULL; // Global JSON array
 cJSON *_regions = NULL;    // Global JSON array
 cJSON *_snow_regions = NULL;
 
-Vector2 _gridOffset = {0};
-
 float _displayScale = 0.5f;
+Vector2 _cameraOffset;
 
 int _activeStructureIndex = -1;
 int _selectedStructureIndex = -1;
-
-Vector2 _cameraOffset;
 
 // Settings
 bool _showNames = true;
@@ -61,9 +58,6 @@ int main(void)
 
     // Allocate space for the required file path
     _filePath = (char *)RL_CALLOC(MAX_FILEPATH_SIZE, 1);
-
-    _gridOffset.x = SCREEN_WIDTH % SQUARE_SIZE;
-    _gridOffset.y = SCREEN_HEIGHT % SQUARE_SIZE;
 
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -154,84 +148,7 @@ void Update()
     // Move snow region points
     if (_showSnowRegions == true)
     {
-        cJSON *snow_region = NULL;
-        cJSON_ArrayForEach(snow_region, _snow_regions)
-        {
-            cJSON *bounds = cJSON_GetObjectItem(snow_region, "bounds");
-            if (bounds != NULL)
-            {
-                cJSON *min = cJSON_GetObjectItem(bounds, "min");
-                cJSON *max = cJSON_GetObjectItem(bounds, "max");
-
-                int min_x = cJSON_GetArrayItem(min, 0)->valueint;
-                int min_y = cJSON_GetArrayItem(min, 1)->valueint;
-
-                int max_x = cJSON_GetArrayItem(max, 0)->valueint;
-                int max_y = cJSON_GetArrayItem(max, 1)->valueint;
-
-                Vector2 topLeft = {min_x * _displayScale, -(max_y * _displayScale)};
-                Vector2 topRight = {max_x * _displayScale, -(max_y * _displayScale)};
-                Vector2 bottomLeft = {min_x * _displayScale, -(min_y * _displayScale)};
-                Vector2 bottomRight = {max_x * _displayScale, -(min_y * _displayScale)};
-
-                // Transform the mouse position to take into acount the moved camera
-                Vector2 transformedMouse = {mouse.x - _cameraOffset.x, mouse.y - _cameraOffset.y};
-
-                // Set active structure if we hover over it
-                if (CheckCollisionPointCircle(transformedMouse, topLeft, 15.0f))
-                {
-                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-                    {
-                        topLeft = transformedMouse;
-                        min_x = (int)(topLeft.x / _displayScale);
-                        max_y = -(int)(topLeft.y / _displayScale);
-                    }
-                }
-
-                if (CheckCollisionPointCircle(transformedMouse, topRight, 15.0f))
-                {
-                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-                    {
-                        topRight = transformedMouse;
-                        max_x = (int)(topRight.x / _displayScale);
-                        max_y = -(int)(topRight.y / _displayScale);
-                    }
-                }
-
-                if (CheckCollisionPointCircle(transformedMouse, bottomLeft, 15.0f))
-                {
-                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-                    {
-                        bottomLeft = transformedMouse;
-                        min_x = (int)(bottomLeft.x / _displayScale);
-                        min_y = -(int)(bottomLeft.y / _displayScale);
-                    }
-                }
-
-                if (CheckCollisionPointCircle(transformedMouse, bottomRight, 15.0f))
-                {
-                    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-                    {
-                        bottomRight = transformedMouse;
-                        max_x = (int)(bottomRight.x / _displayScale);
-                        min_y = -(int)(bottomRight.y / _displayScale);
-                    }
-                }
-
-                cJSON *new_min = cJSON_CreateIntArray((int[]){min_x, min_y}, 2);
-                cJSON *new_max = cJSON_CreateIntArray((int[]){max_x, max_y}, 2);
-                if (!cJSON_ReplaceItemInObjectCaseSensitive(bounds, "min", new_min))
-                {
-                    printf("Error moving snow region point!");
-                    return 0;
-                }
-                if (!cJSON_ReplaceItemInObjectCaseSensitive(bounds, "max", new_max))
-                {
-                    printf("Error moving snow region point!");
-                    return 0;
-                }
-            }
-        }
+        UpdateSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
     }
 
     ControlCamera();
@@ -416,6 +333,10 @@ void Draw()
 
     if (_fileDropped == false)
     {
+        Vector2 _gridOffset = {0};
+        _gridOffset.x = SCREEN_WIDTH % SQUARE_SIZE;
+        _gridOffset.y = SCREEN_HEIGHT % SQUARE_SIZE;
+
         // Draw grid lines
         for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
         {

@@ -88,7 +88,7 @@ void UpdateSnowRegions(cJSON *snow_regions, Vector2 cameraOffset, float *display
     }
 }
 
-void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float _displayScale)
+void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float *_displayScale)
 {
     // Draw the snow regions
     cJSON *snow_region = NULL;
@@ -106,15 +106,30 @@ void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float _displayS
             int max_x = cJSON_GetArrayItem(max, 0)->valueint;
             int max_y = cJSON_GetArrayItem(max, 1)->valueint;
 
-            printf("Snow Region: (%d, %d) to (%d, %d)\n", min_x, min_y, max_x, max_y);
-
             // Snow Region Label
-            DrawText("Snow Region", (min_x + 20) * _displayScale + _cameraOffset.x, -((max_y - 15) * _displayScale) + _cameraOffset.y, 20, BLUE);
-            DrawRectangleLinesEx((Rectangle){min_x * _displayScale + _cameraOffset.x, -(max_y * _displayScale) + _cameraOffset.y, (max_x - min_x) * _displayScale, (max_y - min_y) * _displayScale}, 2, BLUE);
-            DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-            DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-            DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-            DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
+            DrawText("Snow Region", (min_x + 20) * *_displayScale + _cameraOffset.x, -((max_y - 15) * *_displayScale) + _cameraOffset.y, 20, BLUE);
+            DrawRectangleLinesEx((Rectangle){min_x * *_displayScale + _cameraOffset.x, -(max_y * *_displayScale) + _cameraOffset.y, (max_x - min_x) * *_displayScale, (max_y - min_y) * *_displayScale}, 2, BLUE);
+            DrawCircle((min_x + 8) * *_displayScale + _cameraOffset.x, -((max_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);
+            DrawCircle((min_x + 8) * *_displayScale + _cameraOffset.x, -((min_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);
+            DrawCircle((max_x - 8) * *_displayScale + _cameraOffset.x, -((max_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);
+            DrawCircle((max_x - 8) * *_displayScale + _cameraOffset.x, -((min_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);
         }
     }
+}
+
+void AddSnowRegion(cJSON *snow_regions)
+{
+    cJSON *new_snow_region = cJSON_CreateObject();
+
+    // Create a new min and max array at the center of the screen
+    cJSON *new_min = cJSON_CreateIntArray((int[]){-100, -100}, 2);
+    cJSON *new_max = cJSON_CreateIntArray((int[]){100, 100}, 2);
+
+    cJSON *new_bounds = cJSON_CreateObject();
+    cJSON_AddItemToObject(new_bounds, "min", new_min);
+    cJSON_AddItemToObject(new_bounds, "max", new_max);
+
+    cJSON_AddItemToObject(new_snow_region, "bounds", new_bounds);
+
+    cJSON_AddItemToArray(snow_regions, new_snow_region);
 }

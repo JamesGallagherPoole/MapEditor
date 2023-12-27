@@ -187,23 +187,6 @@ void AddStructure()
     cJSON_AddItemToArray(_structures, new_structure);
 }
 
-void AddSnowRegion()
-{
-    printf("Adding new snow region!\n");
-    cJSON *new_snow_region = cJSON_CreateObject();
-
-    // Create a new min and max array at the center of the screen
-    cJSON *new_min = cJSON_CreateIntArray((int[]){-100, -100}, 2);
-    cJSON *new_max = cJSON_CreateIntArray((int[]){100, 100}, 2);
-
-    cJSON *new_bounds = cJSON_CreateObject();
-    cJSON_AddItemToObject(new_bounds, "min", new_min);
-    cJSON_AddItemToObject(new_bounds, "max", new_max);
-
-    cJSON_AddItemToObject(new_snow_region, "bounds", new_bounds);
-    cJSON_AddItemToArray(_snow_regions, new_snow_region);
-}
-
 void ControlCamera()
 {
     // Pan Camera
@@ -433,31 +416,7 @@ void Draw()
 
         if (_showSnowRegions == true)
         {
-            // Draw the snow regions
-            cJSON *snow_region = NULL;
-            cJSON_ArrayForEach(snow_region, _snow_regions)
-            {
-                cJSON *bounds = cJSON_GetObjectItem(snow_region, "bounds");
-                if (bounds != NULL)
-                {
-                    cJSON *min = cJSON_GetObjectItem(bounds, "min");
-                    cJSON *max = cJSON_GetObjectItem(bounds, "max");
-
-                    int min_x = cJSON_GetArrayItem(min, 0)->valueint;
-                    int min_y = cJSON_GetArrayItem(min, 1)->valueint;
-
-                    int max_x = cJSON_GetArrayItem(max, 0)->valueint;
-                    int max_y = cJSON_GetArrayItem(max, 1)->valueint;
-
-                    // Snow Region Label
-                    DrawText("Snow Region", (min_x + 20) * _displayScale + _cameraOffset.x, -((max_y - 15) * _displayScale) + _cameraOffset.y, 20, BLUE);
-                    DrawRectangleLinesEx((Rectangle){min_x * _displayScale + _cameraOffset.x, -(max_y * _displayScale) + _cameraOffset.y, (max_x - min_x) * _displayScale, (max_y - min_y) * _displayScale}, 2, BLUE);
-                    DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-                    DrawCircle((min_x + 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-                    DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((max_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-                    DrawCircle((max_x - 8) * _displayScale + _cameraOffset.x, -((min_y - 5) * _displayScale) + _cameraOffset.y, 10, BLUE);
-                }
-            }
+            DrawSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
         }
 
         // Structure Options
@@ -497,7 +456,7 @@ void Draw()
             GuiGroupBox((Rectangle){snow_region_control_anchor.x + 0, snow_region_control_anchor.y + 0, 152, 72}, "Snow Region Controls");
             if (GuiButton((Rectangle){snow_region_control_anchor.x + 16, snow_region_control_anchor.y + 24, 120, 24}, "Add Snow Region"))
             {
-                AddSnowRegion();
+                AddSnowRegion(_snow_regions);
             }
         }
 

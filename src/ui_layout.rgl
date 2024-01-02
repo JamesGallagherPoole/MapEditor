@@ -1,7 +1,7 @@
 #
 # rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
 #
-# Number of controls:     10
+# Number of controls:     11
 #
 # Ref. window:    r <x> <y> <width> <height>
 # Anchor info:    a <id> <name> <posx> <posy> <enabled>
@@ -11,7 +11,7 @@ r 896 288 -1 -1
 a 001 snow_region_control_anchor 0 400 1
 c 000 5 ExportButton 16 16 120 24 0 Export
 c 001 5 AddStructuresButton 16 56 120 24 0 Add Structure
-c 002 1 StructureOptionsBox 0 0 152 104 0 Structure Options
+c 002 1 StructureOptionsBox 0 0 152 128 0 Structure Options
 c 003 1 visual_controls_box 0 168 152 208 0 Visual Controls
 c 004 7 show_names_toggle 16 184 24 24 0 Show Names
 c 005 7 show_audio_names_toggle 16 232 24 24 0 Show Audio Names
@@ -19,3 +19,4 @@ c 006 7 show_region_text_toggle 16 280 24 24 0 Show Region Text
 c 007 1 snow_region_group_box 0 0 152 72 1 Snow Region Controls
 c 008 5 add_snow_region_button 16 24 120 24 1 Add Snow Region
 c 009 7 show_snow_region_toggle 16 328 24 24 0 Show Snow Regions
+c 010 5 reload_config_button 16 96 120 24 0 Reload Config

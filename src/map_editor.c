@@ -21,6 +21,7 @@
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 
+FilePathList _droppedFiles;
 char *_filePath = NULL;
 bool _fileDropped = false;
 
@@ -230,6 +231,68 @@ void ControlCamera()
     }
 }
 
+void LoadJsonData()
+{
+    // Load the file data
+    int dataSize = 0;
+    unsigned char *fileData = LoadFileData(_filePath, &dataSize);
+
+    // Free the old JSON data if it exists
+    if (_configJson != NULL)
+    {
+        cJSON_Delete(_configJson);
+        _configJson = NULL;
+    }
+
+    // Convert data to a null-terminated string
+    char *jsonData = (char *)malloc(dataSize * 2); // Allocate double the size of the file data to allow for editing
+    memcpy(jsonData, fileData, dataSize);
+    jsonData[dataSize] = '\0';
+
+    // Unload the file data
+    UnloadFileData(fileData);
+    // UnloadDroppedFiles(_droppedFiles); // Unload filepaths from memory
+
+    // Parse the JSON data
+    _configJson = cJSON_Parse(jsonData);
+    if (_configJson == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        RL_FREE(jsonData);
+        return -1;
+    }
+    else
+    {
+        _structures = cJSON_GetObjectItem(_configJson, "structures");
+        _regions = cJSON_GetObjectItem(_configJson, "regions");
+        _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
+        RL_FREE(jsonData);
+    }
+
+    // Iterate through the structures and parse them
+    cJSON *_structures = cJSON_GetObjectItem(_configJson, "structures");
+    if (_structures != NULL)
+    {
+        cJSON *structure = NULL;
+        cJSON_ArrayForEach(structure, _structures)
+        {
+            char *structureName = cJSON_GetObjectItem(structure, "name")->valuestring;
+            cJSON *location = cJSON_GetObjectItem(structure, "location");
+            if (location != NULL)
+            {
+                int x = cJSON_GetArrayItem(location, 0)->valueint;
+                int y = cJSON_GetArrayItem(location, 1)->valueint;
+            }
+
+            printf("Structure Name: %s\n", structureName);
+        }
+    }
+}
+
 void CheckForDroppedFile()
 {
     if (_fileDropped == true)
@@ -239,72 +302,15 @@ void CheckForDroppedFile()
 
     if (IsFileDropped())
     {
-        FilePathList droppedFiles = LoadDroppedFiles();
+        _droppedFiles = LoadDroppedFiles();
 
-        for (int i = 0; i < (int)droppedFiles.count; i++)
+        for (int i = 0; i < (int)_droppedFiles.count; i++)
         {
-            TextCopy(_filePath, droppedFiles.paths[i]);
+            TextCopy(_filePath, _droppedFiles.paths[i]);
             _fileDropped = true;
         }
 
-        // Load the file data
-        int dataSize = 0;
-        unsigned char *fileData = LoadFileData(_filePath, &dataSize);
-
-        // Free the old JSON data if it exists
-        if (_configJson != NULL)
-        {
-            cJSON_Delete(_configJson);
-            _configJson = NULL;
-        }
-
-        // Convert data to a null-terminated string
-        char *jsonData = (char *)malloc(dataSize * 2); // Allocate double the size of the file data to allow for editing
-        memcpy(jsonData, fileData, dataSize);
-        jsonData[dataSize] = '\0';
-
-        // Unload the file data
-        UnloadFileData(fileData);
-        UnloadDroppedFiles(droppedFiles); // Unload filepaths from memory
-
-        // Parse the JSON data
-        _configJson = cJSON_Parse(jsonData);
-        if (_configJson == NULL)
-        {
-            const char *error_ptr = cJSON_GetErrorPtr();
-            if (error_ptr != NULL)
-            {
-                fprintf(stderr, "Error before: %s\n", error_ptr);
-            }
-            RL_FREE(jsonData);
-            return -1;
-        }
-        else
-        {
-            _structures = cJSON_GetObjectItem(_configJson, "structures");
-            _regions = cJSON_GetObjectItem(_configJson, "regions");
-            _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
-            RL_FREE(jsonData);
-        }
-
-        // Iterate through the structures and parse them
-        cJSON *_structures = cJSON_GetObjectItem(_configJson, "structures");
-        if (_structures != NULL)
-        {
-            cJSON *structure = NULL;
-            cJSON_ArrayForEach(structure, _structures)
-            {
-                char *structureName = cJSON_GetObjectItem(structure, "name")->valuestring;
-                cJSON *location = cJSON_GetObjectItem(structure, "location");
-                if (location != NULL)
-                {
-                    int x = cJSON_GetArrayItem(location, 0)->valueint;
-                    int y = cJSON_GetArrayItem(location, 1)->valueint;
-                }
-
-                printf("Structure Name: %s\n", structureName);
-            }
-        }
+        LoadJsonData();
     }
 }
 
@@ -425,7 +431,8 @@ void Draw()
 
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
-        Rectangle structureOptionsBox = {right_panel_anchor.x, right_panel_anchor.y, 152, 104};
+        Rectangle reloadConfigButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 96, 120, 24};
+        Rectangle structureOptionsBox = {right_panel_anchor.x, right_panel_anchor.y, 152, 128};
 
         GuiGroupBox(structureOptionsBox, "Structure Options");
         if (GuiButton(exportButton, "Export"))
@@ -436,6 +443,10 @@ void Draw()
         if (GuiButton(addStructureButton, "Add Structure"))
         {
             AddStructure();
+        }
+        if (GuiButton(reloadConfigButton, "Reload Config"))
+        {
+            LoadJsonData();
         }
 
         // Visual Controls
@@ -479,4 +490,6 @@ void Cleanup()
         cJSON_Delete(_configJson);
         _configJson = NULL;
     }
+
+    UnloadDroppedFiles(_droppedFiles); // Unload filepaths from memory
 }

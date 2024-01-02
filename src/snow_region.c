@@ -1,5 +1,6 @@
 #include "cJSON.h"
 #include "raylib.h"
+#include "snow_region.h"
 
 void UpdateSnowRegions(cJSON *snow_regions, Vector2 cameraOffset, float *displayScale)
 {

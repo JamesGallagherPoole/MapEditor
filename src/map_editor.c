@@ -154,7 +154,7 @@ void Update()
         UpdateSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
     }
 
-    if (_rain_regions == true)
+    if (_showRainRegions == true)
     {
         UpdateSnowRegions(_rain_regions, _cameraOffset, &_displayScale);
     }
@@ -440,7 +440,8 @@ void Draw()
 
         // Structure Options
         Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 20};
-        Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 400};
+        Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 450};
+        Vector2 rain_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 550};
 
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
@@ -463,17 +464,19 @@ void Draw()
         }
 
         // Visual Controls
-        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 158, 152, 208};
+        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 158, 152, 260};
         Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 184, 24, 24};
         Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 232, 24, 24};
         Rectangle showRegionNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 280, 24, 24};
         Rectangle showSnowRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 328, 24, 24};
+        Rectangle showRainRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 376, 24, 24};
 
         GuiGroupBox(visualControlsBox, "Visual Controls");
         GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
         GuiCheckBox(showAudioNamesToggle, "Show Audio Names", &_showAudio);
         GuiCheckBox(showRegionNamesToggle, "Show Region Text", &_showRegionNames);
         GuiCheckBox(showSnowRegionToggle, "Show Snow Regions", &_showSnowRegions);
+        GuiCheckBox(showRainRegionToggle, "Show Rain Regions", &_showRainRegions);
 
         if (_showSnowRegions)
         {
@@ -481,6 +484,15 @@ void Draw()
             if (GuiButton((Rectangle){snow_region_control_anchor.x + 16, snow_region_control_anchor.y + 24, 120, 24}, "Add Snow Region"))
             {
                 AddSnowRegion(_snow_regions);
+            }
+        }
+
+        if (_showRainRegions)
+        {
+            GuiGroupBox((Rectangle){rain_region_control_anchor.x + 0, rain_region_control_anchor.y + 0, 152, 72}, "Rain Region Controls");
+            if (GuiButton((Rectangle){rain_region_control_anchor.x + 16, rain_region_control_anchor.y + 24, 120, 24}, "Add Rain Region"))
+            {
+                AddSnowRegion(_rain_regions);
             }
         }
 

@@ -89,7 +89,7 @@ void UpdateSnowRegions(cJSON *snow_regions, Vector2 cameraOffset, float *display
     }
 }
 
-void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float *_displayScale)
+void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float *_displayScale, char *headerText)
 {
     // Draw the snow regions
     cJSON *snow_region = NULL;
@@ -108,7 +108,7 @@ void DrawSnowRegions(cJSON *snow_regions, Vector2 _cameraOffset, float *_display
             int max_y = cJSON_GetArrayItem(max, 1)->valueint;
 
             // Snow Region Label
-            DrawText("Snow Region", (min_x + 20) * *_displayScale + _cameraOffset.x, -((max_y - 15) * *_displayScale) + _cameraOffset.y, 20, BLUE);
+            DrawText(headerText, (min_x + 20) * *_displayScale + _cameraOffset.x, -((max_y - 15) * *_displayScale) + _cameraOffset.y, 20, BLUE);
             DrawRectangleLinesEx((Rectangle){min_x * *_displayScale + _cameraOffset.x, -(max_y * *_displayScale) + _cameraOffset.y, (max_x - min_x) * *_displayScale, (max_y - min_y) * *_displayScale}, 2, BLUE);
             DrawCircle((min_x + 8) * *_displayScale + _cameraOffset.x, -((max_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);
             DrawCircle((min_x + 8) * *_displayScale + _cameraOffset.x, -((min_y - 5) * *_displayScale) + _cameraOffset.y, 10, BLUE);

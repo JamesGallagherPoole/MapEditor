@@ -29,6 +29,7 @@ cJSON *_configJson = NULL; // Global JSON object
 cJSON *_structures = NULL; // Global JSON array
 cJSON *_regions = NULL;    // Global JSON array
 cJSON *_snow_regions = NULL;
+cJSON *_rain_regions = NULL;
 
 float _displayScale = 0.5f;
 Vector2 _cameraOffset;
@@ -41,6 +42,7 @@ bool _showNames = true;
 bool _showAudio = true;
 bool _showRegionNames = true;
 bool _showSnowRegions = true;
+bool _showRainRegions = true;
 
 // An array of colours for each region
 Color _regionColors[] = {PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME};
@@ -150,6 +152,11 @@ void Update()
     if (_showSnowRegions == true)
     {
         UpdateSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
+    }
+
+    if (_rain_regions == true)
+    {
+        UpdateSnowRegions(_rain_regions, _cameraOffset, &_displayScale);
     }
 
     ControlCamera();
@@ -270,6 +277,7 @@ void LoadJsonData()
         _structures = cJSON_GetObjectItem(_configJson, "structures");
         _regions = cJSON_GetObjectItem(_configJson, "regions");
         _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
+        _rain_regions = cJSON_GetObjectItem(_configJson, "rain_regions");
         RL_FREE(jsonData);
     }
 
@@ -422,7 +430,12 @@ void Draw()
 
         if (_showSnowRegions == true)
         {
-            DrawSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
+            DrawSnowRegions(_snow_regions, _cameraOffset, &_displayScale, "Snow Region");
+        }
+
+        if (_showRainRegions == true)
+        {
+            DrawSnowRegions(_rain_regions, _cameraOffset, &_displayScale, "Rain Region");
         }
 
         // Structure Options

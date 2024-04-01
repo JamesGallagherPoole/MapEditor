@@ -19,7 +19,7 @@
 #define SELECTED_STRUCTURE_FONT_SIZE 20
 
 const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 720;
+const int SCREEN_HEIGHT = 900;
 
 FilePathList _droppedFiles;
 char *_filePath = NULL;
@@ -30,6 +30,7 @@ cJSON *_structures = NULL; // Global JSON array
 cJSON *_regions = NULL;    // Global JSON array
 cJSON *_snow_regions = NULL;
 cJSON *_rain_regions = NULL;
+cJSON *_star_regions = NULL;
 
 float _displayScale = 0.5f;
 Vector2 _cameraOffset;
@@ -43,6 +44,7 @@ bool _showAudio = true;
 bool _showRegionNames = true;
 bool _showSnowRegions = true;
 bool _showRainRegions = true;
+bool _showStarRegions = true;
 
 // An array of colours for each region
 Color _regionColors[] = {PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME};
@@ -157,6 +159,11 @@ void Update()
     if (_showRainRegions == true)
     {
         UpdateSnowRegions(_rain_regions, _cameraOffset, &_displayScale);
+    }
+
+    if (_showStarRegions == true)
+    {
+        UpdateSnowRegions(_star_regions, _cameraOffset, &_displayScale);
     }
 
     ControlCamera();
@@ -278,6 +285,7 @@ void LoadJsonData()
         _regions = cJSON_GetObjectItem(_configJson, "regions");
         _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
         _rain_regions = cJSON_GetObjectItem(_configJson, "rain_regions");
+        _star_regions = cJSON_GetObjectItem(_configJson, "star_regions");
         RL_FREE(jsonData);
     }
 
@@ -438,10 +446,16 @@ void Draw()
             DrawSnowRegions(_rain_regions, _cameraOffset, &_displayScale, "Rain Region");
         }
 
+        if (_showStarRegions == true)
+        {
+            DrawSnowRegions(_star_regions, _cameraOffset, &_displayScale, "Star Region");
+        }
+
         // Structure Options
         Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 20};
-        Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 450};
-        Vector2 rain_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 550};
+        Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 550};
+        Vector2 rain_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 650};
+        Vector2 star_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 750};
 
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
@@ -464,12 +478,13 @@ void Draw()
         }
 
         // Visual Controls
-        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 158, 152, 260};
+        Rectangle visualControlsBox = {right_panel_anchor.x + 0, right_panel_anchor.y + 158, 152, 300};
         Rectangle showNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 184, 24, 24};
         Rectangle showAudioNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 232, 24, 24};
         Rectangle showRegionNamesToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 280, 24, 24};
         Rectangle showSnowRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 328, 24, 24};
         Rectangle showRainRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 376, 24, 24};
+        Rectangle showStarRegionToggle = {right_panel_anchor.x + 24, right_panel_anchor.y + 424, 24, 24};
 
         GuiGroupBox(visualControlsBox, "Visual Controls");
         GuiCheckBox(showNamesToggle, "Show Names", &_showNames);
@@ -477,6 +492,7 @@ void Draw()
         GuiCheckBox(showRegionNamesToggle, "Show Region Text", &_showRegionNames);
         GuiCheckBox(showSnowRegionToggle, "Show Snow Regions", &_showSnowRegions);
         GuiCheckBox(showRainRegionToggle, "Show Rain Regions", &_showRainRegions);
+        GuiCheckBox(showStarRegionToggle, "Show Star Regions", &_showStarRegions);
 
         if (_showSnowRegions)
         {
@@ -493,6 +509,15 @@ void Draw()
             if (GuiButton((Rectangle){rain_region_control_anchor.x + 16, rain_region_control_anchor.y + 24, 120, 24}, "Add Rain Region"))
             {
                 AddSnowRegion(_rain_regions);
+            }
+        }
+
+        if (_showStarRegions)
+        {
+            GuiGroupBox((Rectangle){star_region_control_anchor.x + 0, star_region_control_anchor.y + 0, 152, 72}, "Star Region Controls");
+            if (GuiButton((Rectangle){star_region_control_anchor.x + 16, star_region_control_anchor.y + 24, 120, 24}, "Add Star Region"))
+            {
+                AddSnowRegion(_star_regions);
             }
         }
 

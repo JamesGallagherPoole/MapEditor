@@ -6,6 +6,7 @@
 
 #include "raylib.h"
 #include "cJSON.h"
+#include "map_editor.h"
 
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
@@ -18,8 +19,8 @@
 #define SQUARE_SIZE 31
 #define SELECTED_STRUCTURE_FONT_SIZE 20
 
-const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 900;
+const int SCREEN_WIDTH = 1920;
+const int SCREEN_HEIGHT = 1080;
 
 FilePathList _droppedFiles;
 char *_filePath = NULL;
@@ -31,6 +32,7 @@ cJSON *_regions = NULL;    // Global JSON array
 cJSON *_snow_regions = NULL;
 cJSON *_rain_regions = NULL;
 cJSON *_star_regions = NULL;
+cJSON* _boost_gates = NULL;
 
 float _displayScale = 0.5f;
 Vector2 _cameraOffset;
@@ -45,9 +47,7 @@ bool _showRegionNames = true;
 bool _showSnowRegions = true;
 bool _showRainRegions = true;
 bool _showStarRegions = true;
-
-// An array of colours for each region
-Color _regionColors[] = {PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME};
+bool _showBoostGates = true;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -56,7 +56,7 @@ int main(void)
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-
+   // SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Wee Boats Map Editor");
 
     _fileDropped = false;
@@ -164,6 +164,11 @@ void Update()
     if (_showStarRegions == true)
     {
         UpdateSnowRegions(_star_regions, _cameraOffset, &_displayScale);
+    }
+
+    if (_showBoostGates == true)
+    {
+        UpdateBoostGates(_boost_gates, _cameraOffset, &_displayScale);
     }
 
     ControlCamera();
@@ -286,6 +291,7 @@ void LoadJsonData()
         _snow_regions = cJSON_GetObjectItem(_configJson, "snow_regions");
         _rain_regions = cJSON_GetObjectItem(_configJson, "rain_regions");
         _star_regions = cJSON_GetObjectItem(_configJson, "star_regions");
+        _boost_gates = cJSON_GetObjectItem(_configJson, "boost_gates");
         RL_FREE(jsonData);
     }
 
@@ -328,6 +334,109 @@ void CheckForDroppedFile()
 
         LoadJsonData();
     }
+}
+
+void UpdateBoostGates(cJSON *boost_gates, Vector2 cameraOffset, float *displayScale)
+{
+    Vector2 mouse = GetMousePosition();
+
+    // Transform the mouse position to take into acount the moved camera
+    Vector2 transformedMouse = {mouse.x - cameraOffset.x, mouse.y - cameraOffset.y};
+
+    cJSON *boost_gate = NULL;
+    cJSON_ArrayForEach(boost_gate, boost_gates)
+    {
+		cJSON *a = cJSON_GetObjectItem(boost_gate, "a");
+		cJSON *b = cJSON_GetObjectItem(boost_gate, "b");
+
+		int a_x = cJSON_GetArrayItem(a, 0)->valueint;
+		int a_y = cJSON_GetArrayItem(a, 1)->valueint;
+
+		int b_x = cJSON_GetArrayItem(b, 0)->valueint;
+		int b_y = cJSON_GetArrayItem(b, 1)->valueint;
+
+		Vector2 a_vec = {a_x * *displayScale, -(a_y * *displayScale)};
+		Vector2 b_vec = {b_x * *displayScale, -(b_y * *displayScale)};
+
+		// Transform the mouse position to take into acount the moved camera
+		Vector2 transformedMouse = {mouse.x - cameraOffset.x, mouse.y - cameraOffset.y};
+
+		// Set active structure if we hover over it
+		if (CheckCollisionPointCircle(transformedMouse, a_vec, 20.0f))
+		{
+			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+			{
+				a_vec = transformedMouse;
+				a_x = (int)(a_vec.x / *displayScale);
+				a_y = -(int)(a_vec.y / *displayScale);
+			}
+		}
+
+		if (CheckCollisionPointCircle(transformedMouse, b_vec, 20.0f))
+		{
+			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+			{
+				b_vec = transformedMouse;
+				b_x = (int)(b_vec.x / *displayScale);
+				b_y = -(int)(b_vec.y / *displayScale);
+			}
+		}
+
+		cJSON *new_a = cJSON_CreateIntArray((int[]){a_x, a_y}, 2);
+		cJSON *new_b = cJSON_CreateIntArray((int[]){b_x, b_y}, 2);
+		if (!cJSON_ReplaceItemInObjectCaseSensitive(boost_gate, "a", new_a))
+		{
+			printf("Error moving snow region point!");
+			return;
+		}
+		if (!cJSON_ReplaceItemInObjectCaseSensitive(boost_gate, "b", new_b))
+		{
+			printf("Error moving snow region point!");
+			return;
+		}
+    }
+}
+
+void DrawBoostGates(cJSON *boost_gates, Vector2 _cameraOffset, float *_displayScale)
+{
+    // Draw the snow regions
+    cJSON *boost_gate = NULL;
+    cJSON_ArrayForEach(boost_gate, boost_gates)
+    {
+		cJSON *a = cJSON_GetObjectItem(boost_gate, "a");
+		cJSON *b = cJSON_GetObjectItem(boost_gate, "b");
+
+		int a_x = cJSON_GetArrayItem(a, 0)->valueint;
+		int a_y = cJSON_GetArrayItem(a, 1)->valueint;
+
+		int b_x = cJSON_GetArrayItem(b, 0)->valueint;
+		int b_y = cJSON_GetArrayItem(b, 1)->valueint;
+
+		// Snow Region Label
+        DrawLine(
+            a_x * *_displayScale + _cameraOffset.x,
+            -a_y * *_displayScale + _cameraOffset.y,
+            b_x * *_displayScale + _cameraOffset.x,
+            -b_y * *_displayScale + _cameraOffset.y,
+            ORANGE
+        );
+		DrawCircle((a_x + 8)** _displayScale + _cameraOffset.x, -((a_y - 5) * *_displayScale) + _cameraOffset.y, 10, ORANGE);
+		DrawCircle((b_x + 8) * *_displayScale + _cameraOffset.x, -((b_y - 5) * *_displayScale) + _cameraOffset.y, 10, ORANGE);
+    }
+}
+
+void AddBoostGate(cJSON *boost_gates)
+{
+    cJSON *new_boost_gate = cJSON_CreateObject();
+
+    // Create a new min and max array at the center of the screen
+    cJSON *new_a = cJSON_CreateIntArray((int[]){-50, -50}, 2);
+    cJSON *new_b = cJSON_CreateIntArray((int[]){100, 100}, 2);
+
+    cJSON_AddItemToObject(new_boost_gate, "a", new_a);
+    cJSON_AddItemToObject(new_boost_gate, "b", new_b);
+
+    cJSON_AddItemToArray(boost_gates, new_boost_gate);
 }
 
 void Draw()
@@ -375,7 +484,10 @@ void Draw()
                 // Region Colours and Names
                 Color structureColor = GREEN;
                 Color activeColor = RED;
-                char *regionName = (char *)RL_CALLOC(256, 1); // Allocate 256 bytes for the region name (should be enough)
+                char* regionName = NULL;
+
+                // An array of colours for each region
+                Color _regionColors[] = { PINK, ORANGE, SKYBLUE, PURPLE, BROWN, BEIGE, VIOLET, GOLD, LIME };
 
                 int hasRegionId = cJSON_HasObjectItem(structure, "region_id");
                 if (hasRegionId == true)
@@ -425,6 +537,7 @@ void Draw()
                     DrawText(regionName, (x * _displayScale) + _cameraOffset.x, -(y * _displayScale) + _cameraOffset.y + 20, 20, structureColor);
                 }
 
+
                 // Show info about the selected structure on bottom right of screen
                 if (_selectedStructureIndex == structureIndex)
                 {
@@ -451,11 +564,17 @@ void Draw()
             DrawSnowRegions(_star_regions, _cameraOffset, &_displayScale, "Star Region");
         }
 
+        if (_showBoostGates == true)
+        {
+            DrawBoostGates(_boost_gates, _cameraOffset, &_displayScale);
+        }
+
         // Structure Options
         Vector2 right_panel_anchor = {SCREEN_WIDTH - 200, 20};
         Vector2 snow_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 550};
         Vector2 rain_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 650};
         Vector2 star_region_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 750};
+        Vector2 boost_gates_control_anchor = {right_panel_anchor.x, right_panel_anchor.y + 850};
 
         Rectangle exportButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 16, 120, 24};
         Rectangle addStructureButton = {right_panel_anchor.x + 16, right_panel_anchor.y + 56, 120, 24};
@@ -518,6 +637,14 @@ void Draw()
             if (GuiButton((Rectangle){star_region_control_anchor.x + 16, star_region_control_anchor.y + 24, 120, 24}, "Add Star Region"))
             {
                 AddSnowRegion(_star_regions);
+            }
+        }
+
+        if (_showBoostGates) {
+            GuiGroupBox((Rectangle){boost_gates_control_anchor.x + 0, boost_gates_control_anchor.y + 0, 152, 72}, "Boost Gate Controls");
+            if (GuiButton((Rectangle){boost_gates_control_anchor.x + 16, boost_gates_control_anchor.y + 24, 120, 24}, "Add Boost Gate"))
+            {
+                AddBoostGate(_boost_gates);
             }
         }
 

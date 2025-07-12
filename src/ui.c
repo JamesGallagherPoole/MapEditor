@@ -7,7 +7,7 @@ void HandleExportButton(Rectangle button)
         if (IsButtonPressed(button) == 1)
         {
             printf("Exporting!\n");
-            ExportCurrentStructuresToConfigFile();
+            ExportConfig();
         }
     }
 }

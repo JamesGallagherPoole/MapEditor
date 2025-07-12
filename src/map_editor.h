@@ -1,16 +1,19 @@
 #ifndef MAP_EDITOR_H
 #define MAP_EDITOR_H
 
-void Update();
-void ControlCamera();
-void Draw();
-void Cleanup();
-void CheckForDroppedFile();
+#include "raylib.h"
+#include "cJSON.h"
 
-void UpdateBoostGates(cJSON *boost_gates, Vector2 cameraOffset, float* displayScale);
-void DrawBoostGates(cJSON *boost_gates, Vector2 cameraOffset, float *displayScale);
-void AddBoostGate(cJSON *snow_regions);
+//------------------------------------------------------------------------------------
+// Function Declarations for map_editor.c
+//------------------------------------------------------------------------------------
+void Update(void);
+void Draw(void);
+void Cleanup(void);
+void LoadJsonData(void);
+void CheckForDroppedFile(void);
+void ControlCamera(void);
+void AddStructure(void);
+void ExportConfig(void);
 
-#endif // !MAP_EDITOR_H
-
-
+#endif // MAP_EDITOR_H

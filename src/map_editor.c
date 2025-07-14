@@ -18,7 +18,7 @@
 #include "raygui.h"
 #include "raymath.h" // Required for Vector2Distance
 
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h> // Required for fabsf
@@ -55,19 +55,18 @@ float _displayScale = 0.5f;
 Vector2 _cameraOffset;
 
 // State & Selection
-int _activeStructureIndex = -1; // For hover
-int _infoPanelIndex = -1;      // For displaying info in the bottom right panel
+SelectedItem _selectedItems[MAX_SELECTED_ITEMS];
+int _selectedItemCount = 0;
+SelectedItem _activeItem = { -1, ELEMENT_TYPE_NONE }; // For hover
+SelectedItem _infoPanelItem = { -1, ELEMENT_TYPE_NONE };      // For displaying info in the bottom right panel
 
 // Multi-Select & Dragging
-int _selectedStructureIndices[MAX_SELECTED_ITEMS];
-Vector2 _dragStartPositions[MAX_SELECTED_ITEMS]; // Store original positions for dragging
-int _selectedItemCount = 0;
 bool _isMarqueeSelecting = false;
 bool _isDraggingGroup = false;
 bool _potentialDrag = false;    // Flag to check if a drag should start
 Vector2 _marqueeStartPos = { 0 };
 Vector2 _mouseDownWorldPos = { 0 }; // Position where mouse was pressed, in world coords
-Rectangle _selectionMarquee = { 0 }; 
+Rectangle _selectionMarquee = { 0 };
 
 // Settings
 bool _showNames = true;
@@ -83,9 +82,19 @@ bool _showSpaceWorldArea = true;
 //------------------------------------------------------------------------------------
 // Helper function declarations
 //------------------------------------------------------------------------------------
-bool IsStructureSelected(int index);
+bool IsItemSelected(SelectedItem item);
 void ClearSelection(void);
-void AddToSelection(int index);
+void AddToSelection(SelectedItem item);
+cJSON* GetSelectedItemJSON(SelectedItem item);
+void UpdateSelectedItemPosition(SelectedItem item, float x, float y);
+void Update();
+void Draw();
+void Cleanup();
+void LoadJsonData();
+void CheckForDroppedFile();
+void ExportConfig();
+void AddStructure();
+void ControlCamera();
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -118,93 +127,120 @@ void Update()
     Vector2 mousePos = GetMousePosition();
     Vector2 worldMousePos = {(mousePos.x - _cameraOffset.x) / _displayScale, (mousePos.y - _cameraOffset.y) / _displayScale};
 
-    // Reset hover index before checking
-    _activeStructureIndex = -1;
+    // Reset hover item
+    _activeItem.index = -1;
+    _activeItem.type = ELEMENT_TYPE_NONE;
 
-    // Check for hover over structures (only if not currently dragging something else)
+    // --- Hover Detection ---
     if (!_isDraggingGroup && !_isMarqueeSelecting)
     {
+        // Check Structures
         cJSON *structure = NULL;
         int structureIndex = 0;
         cJSON_ArrayForEach(structure, _structures)
         {
             cJSON *location = cJSON_GetObjectItem(structure, "location");
-            if (location)
+            if(location)
             {
                 Vector2 structureWorldPos = {cJSON_GetArrayItem(location, 0)->valuedouble, -cJSON_GetArrayItem(location, 1)->valuedouble};
                 if (CheckCollisionPointCircle(worldMousePos, structureWorldPos, 10.0f / _displayScale))
                 {
-                    _activeStructureIndex = structureIndex;
-                    break;
+                    _activeItem.index = structureIndex;
+                    _activeItem.type = ELEMENT_TYPE_STRUCTURE;
+                    goto hover_found; // Exit after finding one
                 }
             }
             structureIndex++;
         }
-    }
 
-    // Handle Mouse Input for Selection and Dragging
+        // Check Boost Gates
+        if (_showBoostGates)
+        {
+            cJSON *gate = NULL;
+            int gateIndex = 0;
+            cJSON_ArrayForEach(gate, _boost_gates)
+            {
+                cJSON *a = cJSON_GetObjectItem(gate, "a");
+                cJSON *b = cJSON_GetObjectItem(gate, "b");
+                Vector2 posA = { cJSON_GetArrayItem(a, 0)->valuedouble, -cJSON_GetArrayItem(a, 1)->valuedouble };
+                Vector2 posB = { cJSON_GetArrayItem(b, 0)->valuedouble, -cJSON_GetArrayItem(b, 1)->valuedouble };
+
+                if (CheckCollisionPointCircle(worldMousePos, posA, 10.0f / _displayScale)) {
+                    _activeItem.index = gateIndex;
+                    _activeItem.type = ELEMENT_TYPE_BOOST_GATE_A;
+                    goto hover_found;
+                }
+                if (CheckCollisionPointCircle(worldMousePos, posB, 10.0f / _displayScale)) {
+                    _activeItem.index = gateIndex;
+                    _activeItem.type = ELEMENT_TYPE_BOOST_GATE_B;
+                    goto hover_found;
+                }
+                gateIndex++;
+            }
+        }
+    }
+hover_found:; // Label to jump to after finding a hovered item
+
+    // --- Handle Mouse Input ---
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
     {
-        _mouseDownWorldPos = worldMousePos; // Store world position on click
+        _mouseDownWorldPos = worldMousePos;
 
-        if (_activeStructureIndex != -1) // Clicked on a structure
+        if (_activeItem.index != -1) // Clicked on an item
         {
-            // If the clicked item isn't already selected, clear the old selection.
-            if (!IsStructureSelected(_activeStructureIndex))
+            if (!IsItemSelected(_activeItem))
             {
-                ClearSelection();
-                AddToSelection(_activeStructureIndex);
-                _infoPanelIndex = _activeStructureIndex;
+                if(!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_RIGHT_CONTROL))
+                {
+                    ClearSelection();
+                }
+                AddToSelection(_activeItem);
+                _infoPanelItem = _activeItem;
             }
-            // If it was clicked, it's a potential drag, regardless of prior selection.
             _potentialDrag = true;
         }
         else // Clicked on empty space
         {
             _isMarqueeSelecting = true;
             _marqueeStartPos = mousePos;
-            ClearSelection();
+            if(!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_RIGHT_CONTROL))
+            {
+                ClearSelection();
+            }
         }
     }
 
-    // Handle dragging
     if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
     {
-        // Check if a potential drag should become a real drag
-        if (_potentialDrag && !_isDraggingGroup)
+        // Start dragging if mouse moves beyond a threshold
+        if (_potentialDrag && !_isDraggingGroup && Vector2Distance(worldMousePos, _mouseDownWorldPos) > (5.0f / _displayScale))
         {
-            float dragThreshold = 5.0f / _displayScale; // 5 pixels in screen space
-            if (Vector2Distance(worldMousePos, _mouseDownWorldPos) > dragThreshold)
+            _isDraggingGroup = true;
+            // Store original positions of all selected items
+            for (int i = 0; i < _selectedItemCount; i++)
             {
-                _isDraggingGroup = true;
-                // Store original positions of all selected items at the moment drag starts
-                for (int i = 0; i < _selectedItemCount; i++)
-                {
-                    cJSON* selStructure = cJSON_GetArrayItem(_structures, _selectedStructureIndices[i]);
-                    cJSON* loc = cJSON_GetObjectItem(selStructure, "location");
-                    _dragStartPositions[i].x = cJSON_GetArrayItem(loc, 0)->valuedouble;
-                    _dragStartPositions[i].y = cJSON_GetArrayItem(loc, 1)->valuedouble;
+                cJSON* item_json = GetSelectedItemJSON(_selectedItems[i]);
+                if (item_json) {
+                    _selectedItems[i].dragStartPosition.x = cJSON_GetArrayItem(item_json, 0)->valuedouble;
+                    _selectedItems[i].dragStartPosition.y = cJSON_GetArrayItem(item_json, 1)->valuedouble;
                 }
             }
         }
 
         if (_isDraggingGroup)
         {
-            Vector2 dragDelta = {worldMousePos.x - _mouseDownWorldPos.x, worldMousePos.y - _mouseDownWorldPos.y};
+            Vector2 dragDelta = Vector2Subtract(worldMousePos, _mouseDownWorldPos);
+            // Update positions of all selected items
             for (int i = 0; i < _selectedItemCount; i++)
             {
-                int idx = _selectedStructureIndices[i];
-                cJSON* selStructure = cJSON_GetArrayItem(_structures, idx);
-                
-                float newX = _dragStartPositions[i].x + dragDelta.x;
-                float newY = _dragStartPositions[i].y - dragDelta.y; // Y is flipped in world space
-
-                cJSON *new_location = cJSON_CreateIntArray((int[]){(int)newX, (int)newY}, 2);
-                cJSON_ReplaceItemInObjectCaseSensitive(selStructure, "location", new_location);
+                float newX = _selectedItems[i].dragStartPosition.x + dragDelta.x;
+                float newY = _selectedItems[i].dragStartPosition.y - dragDelta.y; // Y is flipped
+                UpdateSelectedItemPosition(_selectedItems[i], newX, newY);
             }
         }
         else if (_isMarqueeSelecting)
         {
+            // Update marquee rectangle
             _selectionMarquee.x = fminf(_marqueeStartPos.x, mousePos.x);
             _selectionMarquee.y = fminf(_marqueeStartPos.y, mousePos.y);
             _selectionMarquee.width = fabsf(_marqueeStartPos.x - mousePos.x);
@@ -212,14 +248,13 @@ void Update()
         }
     }
 
-    // Handle mouse release
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
     {
         if (_isMarqueeSelecting)
         {
             _isMarqueeSelecting = false;
-            ClearSelection();
             
+            // Select structures within marquee
             int structureIndex = 0;
             cJSON* structure = NULL;
             cJSON_ArrayForEach(structure, _structures)
@@ -230,23 +265,56 @@ void Update()
                     Vector2 screenPos = { (cJSON_GetArrayItem(location, 0)->valuedouble * _displayScale) + _cameraOffset.x, -(cJSON_GetArrayItem(location, 1)->valuedouble * _displayScale) + _cameraOffset.y };
                     if (CheckCollisionPointRec(screenPos, _selectionMarquee))
                     {
-                        AddToSelection(structureIndex);
+                        AddToSelection((SelectedItem){structureIndex, ELEMENT_TYPE_STRUCTURE});
                     }
                 }
                 structureIndex++;
             }
-            // Reset marquee visually
+
+            // Select boost gates within marquee
+            if (_showBoostGates)
+            {
+                int gateIndex = 0;
+                cJSON* gate = NULL;
+                cJSON_ArrayForEach(gate, _boost_gates)
+                {
+                    cJSON* a = cJSON_GetObjectItem(gate, "a");
+                    cJSON* b = cJSON_GetObjectItem(gate, "b");
+                    Vector2 screenPosA = { (cJSON_GetArrayItem(a, 0)->valuedouble * _displayScale) + _cameraOffset.x, -(cJSON_GetArrayItem(a, 1)->valuedouble * _displayScale) + _cameraOffset.y };
+                    Vector2 screenPosB = { (cJSON_GetArrayItem(b, 0)->valuedouble * _displayScale) + _cameraOffset.x, -(cJSON_GetArrayItem(b, 1)->valuedouble * _displayScale) + _cameraOffset.y };
+                    
+                    if (CheckCollisionPointRec(screenPosA, _selectionMarquee))
+                    {
+                        AddToSelection((SelectedItem){gateIndex, ELEMENT_TYPE_BOOST_GATE_A});
+                    }
+                    if (CheckCollisionPointRec(screenPosB, _selectionMarquee))
+                    {
+                        AddToSelection((SelectedItem){gateIndex, ELEMENT_TYPE_BOOST_GATE_B});
+                    }
+                    gateIndex++;
+                }
+            }
             _selectionMarquee = (Rectangle){0,0,0,0};
         }
+        else if (!_potentialDrag && _activeItem.index == -1)
+        {
+             // If we clicked on nothing and didn't drag, clear selection
+             // (unless holding control)
+            if(!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_RIGHT_CONTROL))
+            {
+                ClearSelection();
+            }
+        }
+        
         _isDraggingGroup = false;
-        _potentialDrag = false; // Reset potential drag flag
+        _potentialDrag = false;
     }
 
-    // Update all other editable elements if they are visible
+    // Update other elements
     if (_showSnowRegions) UpdateSnowRegions(_snow_regions, _cameraOffset, &_displayScale);
     if (_showRainRegions) UpdateSnowRegions(_rain_regions, _cameraOffset, &_displayScale);
     if (_showStarRegions) UpdateSnowRegions(_star_regions, _cameraOffset, &_displayScale);
-    if (_showBoostGates) UpdateBoostGates(_boost_gates, _cameraOffset, &_displayScale);
+    // Update for boost gates is now handled in the main update loop
     if (_showPortals) UpdatePortals(_portals, _cameraOffset, &_displayScale);
     if (_showOceanWorldArea) UpdateWorldArea(_ocean_world_area, _cameraOffset, &_displayScale);
     if (_showSpaceWorldArea) UpdateWorldArea(_space_world_area, _cameraOffset, &_displayScale);
@@ -302,15 +370,16 @@ void Draw()
 
                 // Determine draw color based on selection/hover state
                 Color drawColor = structureColor;
-                if (IsStructureSelected(structureIndex)) drawColor = RED;
-                else if (structureIndex == _activeStructureIndex) drawColor = YELLOW;
+                SelectedItem currentItem = { structureIndex, ELEMENT_TYPE_STRUCTURE };
+                if (IsItemSelected(currentItem)) drawColor = RED;
+                else if (_activeItem.index == structureIndex && _activeItem.type == ELEMENT_TYPE_STRUCTURE) drawColor = YELLOW;
 
                 DrawCircleV(pos, 10, drawColor);
                 if (_showNames) DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, pos.x + 15, pos.y, 15, DARKGRAY);
                 if (_showRegionNames) DrawText(regionName, pos.x + 15, pos.y + 20, 15, structureColor);
 
                 // Info panel shows the last single-clicked item
-                if (_infoPanelIndex == structureIndex)
+                if (_infoPanelItem.index == structureIndex && _infoPanelItem.type == ELEMENT_TYPE_STRUCTURE)
                 {
                     DrawRectangle(SCREEN_WIDTH - 330, SCREEN_HEIGHT - 200, 320, 190, Fade(LIGHTGRAY, 0.8f));
                     DrawText(cJSON_GetObjectItem(structure, "name")->valuestring, SCREEN_WIDTH - 320, SCREEN_HEIGHT - 180, SELECTED_STRUCTURE_FONT_SIZE, DARKGRAY);
@@ -357,11 +426,10 @@ void Draw()
         if (_showPortals) { GuiGroupBox((Rectangle){panelX, panelY, panelWidth, 60}, "Portal"); if (GuiButton((Rectangle){panelX + 10, panelY + 20, 160, 25}, "Add Portal")) AddPortal(_portals, _cameraOffset, _displayScale); }
 
         // Draw Help Text
-        DrawText("Commands: Move Camera: Arrow Keys, Zoom: Mouse Wheel/I-O", 10, SCREEN_HEIGHT - 30, 20, DARKGRAY);
+        DrawText("Commands: Move Camera: Arrow Keys, Zoom: Mouse Wheel/I-O, Multi-Select: Ctrl+Click/Drag", 10, SCREEN_HEIGHT - 30, 20, DARKGRAY);
     }
     EndDrawing();
 }
-
 
 //------------------------------------------------------------------------------------
 // Core Functions
@@ -416,9 +484,6 @@ void CheckForDroppedFile()
 
 void ExportConfig()
 {
-    // Use cJSON_PrintBuffered to get a formatted (indented) string
-    // The second argument is a buffer size guess, 0 is fine to let cJSON calculate.
-    // The third argument (1) enables formatting.
     char *jsonString = cJSON_PrintBuffered(_configJson, 0, 1);
     if (jsonString)
     {
@@ -460,11 +525,13 @@ void ControlCamera()
 //------------------------------------------------------------------------------------
 // Selection Helper Functions
 //------------------------------------------------------------------------------------
-bool IsStructureSelected(int index)
+bool IsItemSelected(SelectedItem item)
 {
     for (int i = 0; i < _selectedItemCount; i++)
     {
-        if (_selectedStructureIndices[i] == index) return true;
+        if (_selectedItems[i].index == item.index && _selectedItems[i].type == item.type) {
+            return true;
+        }
     }
     return false;
 }
@@ -472,14 +539,60 @@ bool IsStructureSelected(int index)
 void ClearSelection(void)
 {
     _selectedItemCount = 0;
-    _infoPanelIndex = -1;
+    _infoPanelItem.index = -1;
+    _infoPanelItem.type = ELEMENT_TYPE_NONE;
 }
 
-void AddToSelection(int index)
+void AddToSelection(SelectedItem item)
 {
-    if (_selectedItemCount < MAX_SELECTED_ITEMS && !IsStructureSelected(index))
+    if (_selectedItemCount < MAX_SELECTED_ITEMS && !IsItemSelected(item))
     {
-        _selectedStructureIndices[_selectedItemCount] = index;
+        _selectedItems[_selectedItemCount] = item;
         _selectedItemCount++;
+    }
+}
+
+// Gets the JSON array item for a given selected item's point
+cJSON* GetSelectedItemJSON(SelectedItem item) {
+    switch (item.type) {
+        case ELEMENT_TYPE_STRUCTURE: {
+            cJSON* structure = cJSON_GetArrayItem(_structures, item.index);
+            return cJSON_GetObjectItem(structure, "location");
+        }
+        case ELEMENT_TYPE_BOOST_GATE_A: {
+            cJSON* gate = cJSON_GetArrayItem(_boost_gates, item.index);
+            return cJSON_GetObjectItem(gate, "a");
+        }
+        case ELEMENT_TYPE_BOOST_GATE_B: {
+            cJSON* gate = cJSON_GetArrayItem(_boost_gates, item.index);
+            return cJSON_GetObjectItem(gate, "b");
+        }
+        default:
+            return NULL;
+    }
+}
+
+// Updates the position of a selected item in the main cJSON object
+void UpdateSelectedItemPosition(SelectedItem item, float x, float y) {
+    cJSON *new_pos = cJSON_CreateIntArray((int[]){(int)x, (int)y}, 2);
+    switch (item.type) {
+        case ELEMENT_TYPE_STRUCTURE: {
+            cJSON* structure = cJSON_GetArrayItem(_structures, item.index);
+            if(structure) cJSON_ReplaceItemInObjectCaseSensitive(structure, "location", new_pos);
+            break;
+        }
+        case ELEMENT_TYPE_BOOST_GATE_A: {
+            cJSON* gate = cJSON_GetArrayItem(_boost_gates, item.index);
+            if(gate) cJSON_ReplaceItemInObjectCaseSensitive(gate, "a", new_pos);
+            break;
+        }
+        case ELEMENT_TYPE_BOOST_GATE_B: {
+            cJSON* gate = cJSON_GetArrayItem(_boost_gates, item.index);
+            if(gate) cJSON_ReplaceItemInObjectCaseSensitive(gate, "b", new_pos);
+            break;
+        }
+        default:
+            cJSON_Delete(new_pos); // Clean up if not used
+            break;
     }
 }
